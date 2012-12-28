@@ -21,7 +21,9 @@ var Module = { TOTAL_MEMORY: 100*1024*1024 };
                     Orange: 0xFF8600,
                     Blue: 0x1F7CFF,
                     Brown: 0x8B2500,
-                    Gold: 0xFFB90F};
+                    Gold: 0xFFB90F,
+                    Pink: 0xFF52CB,
+                    Black: 0x000000};
     
     initScene = function() {
         var collisionConfiguration, dispatcher, overlappingPairCache, solver, // Ammo world
@@ -70,7 +72,7 @@ var Module = { TOTAL_MEMORY: 100*1024*1024 };
             70,
             window.innerWidth / window.innerHeight,
             1,
-            1000
+            5000
         );
         camera.position.set( 0, 800, 300 );
         camera.lookAt( scene.position );
@@ -87,14 +89,11 @@ var Module = { TOTAL_MEMORY: 100*1024*1024 };
         controls.dynamicDampingFactor = 0.1;
         controls.keys = [65, 83, 68];
 
-        //create ground
+        //Create the ground.
         createWall(fieldWidth, fieldHeight, 2, THREE.ImageUtils.loadTexture("/img/background.png"), -Math.PI / 2, 0, 0, 0, -20, 0);
-        // createWall(fieldWidth, fieldHeight, 2, 0xFFFFff, -Math.PI / 2, 0, 0, 0, -20, 0);
 
-
-        //import blender mesh
+        //Load the meshes.
         var loader = new THREE.JSONLoader();
-
         var baseURL = "meshes/";
         loader.load({color: COLORENUM.Red}, baseURL + "newTest.js", createBlender);
         loader.load({color: COLORENUM.Orange}, baseURL + "topSickle.js", createBlender);
@@ -109,10 +108,17 @@ var Module = { TOTAL_MEMORY: 100*1024*1024 };
         loader.load({color: COLORENUM.Brown}, baseURL + "smallStaryuBase.js", createBlender);
         loader.load({color: COLORENUM.Gold}, baseURL + "smallStaryuMiddle.js", createBlender);
         loader.load({color: COLORENUM.Red}, baseURL + "smallStaryuGem.js", createBlender);
+        loader.load({color: COLORENUM.Gold, meshType: "Lambert"}, baseURL + "digletLeft.js", createBlender);
+        loader.load({color: COLORENUM.Pink}, baseURL + "digletLeftNose.js", createBlender);
+        loader.load({color: COLORENUM.Black}, baseURL + "digletLeftEyes.js", createBlender);
+        loader.load({color: COLORENUM.Gold, meshType: "Lambert"}, baseURL + "digletRight.js", createBlender);
+        loader.load({color: COLORENUM.Pink}, baseURL + "digletRightNose.js", createBlender);
+        loader.load({color: COLORENUM.Black}, baseURL + "digletRightEyes.js", createBlender);
+        loader.load({color: COLORENUM.Black}, baseURL + "digletLeftEyesOthers.js", createBlender);
 
         //Create Voltorbs.
         createBall(0, "img/voltorb.gif", -35, 0, -105, -Math.PI / 2, -Math.PI / 2, -Math.PI / 3, 22, false, false);
-        createBall(0, "img/voltorb.gif", -55, 0, -135, -Math.PI / 2, -Math.PI / 2, -Math.PI / 3, 22, false, false);
+        createBall(0, "img/voltorb.gif", -85, 0, -155, -Math.PI / 2, -Math.PI / 2, -Math.PI / 3, 22, false, false);
         createBall(0, "img/voltorb.gif", -20, 0, -185, -Math.PI / 2, -Math.PI / 2, -Math.PI / 3, 22, false, false);
 
         function createBlender(geometry, config) {

@@ -15,7 +15,7 @@ var Module = { TOTAL_MEMORY: 100*1024*1024 };
     
     var projector, renderer, scene, light, camera, controls, wiper, wiperShape, wiperTransform,
         initScene, render, main, updatePhysics, wiperAmmo, wiperPos = 0,
-        createBox, initControls, now, lastbox = 0, boxes = [], leftWiperPressed = false,
+        createBall, initControls, now, lastbox = 0, boxes = [], leftWiperPressed = false,
         fieldWidth = 550, fieldHeight = 850,
         COLORENUM = {Red: 0xFF0000,
                     Orange: 0xFF8600,
@@ -103,12 +103,19 @@ var Module = { TOTAL_MEMORY: 100*1024*1024 };
         loader.load({color: COLORENUM.Red, meshType: "Lambert"}, baseURL + "leftWall.js", createBlender);
         loader.load({color: COLORENUM.Blue}, baseURL + "leftTopBlue.js", createBlender);
         loader.load({color: COLORENUM.Blue}, baseURL + "leftTopBlueFat.js", createBlender);
-        loader.load({color: COLORENUM.Brown, meshType: "Lamber"}, baseURL + "staryuBase.js", createBlender);
+        loader.load({color: COLORENUM.Brown}, baseURL + "staryuBase.js", createBlender);
         loader.load({color: COLORENUM.Gold}, baseURL + "staryuMiddle.js", createBlender);
         loader.load({color: COLORENUM.Red}, baseURL + "staryuGem.js", createBlender);
+        loader.load({color: COLORENUM.Brown}, baseURL + "smallStaryuBase.js", createBlender);
+        loader.load({color: COLORENUM.Gold}, baseURL + "smallStaryuMiddle.js", createBlender);
+        loader.load({color: COLORENUM.Red}, baseURL + "smallStaryuGem.js", createBlender);
+
+        //Create Voltorbs.
+        createBall(0, "img/voltorb.gif", -35, 0, -105, -Math.PI / 2, -Math.PI / 2, -Math.PI / 3, 22, false, false);
+        createBall(0, "img/voltorb.gif", -55, 0, -135, -Math.PI / 2, -Math.PI / 2, -Math.PI / 3, 22, false, false);
+        createBall(0, "img/voltorb.gif", -20, 0, -185, -Math.PI / 2, -Math.PI / 2, -Math.PI / 3, 22, false, false);
 
         function createBlender(geometry, config) {
-            console.log(config);
             geometry.mergeVertices();
             var Meshtype = config.meshType == "Lambert" ? THREE.MeshLambertMaterial : (config.meshType == "Basic" ? THREE.MeshBasicMaterial : THREE.MeshPhongMaterial);
             var material = new Meshtype({specular: 0x888888, color: config.color});// map: THREE.ImageUtils.loadTexture("/img/redTest.png")});
@@ -183,7 +190,7 @@ var Module = { TOTAL_MEMORY: 100*1024*1024 };
         boxes.push(wiperAmmo);
 
         initControls();
-        // createBox();
+        // boxes.push(createBall(9, "/img/pokeball.png", 0, 0, 0, 20));
     };
 
     function createWall(width, height, depth, img, rotationX, rotationY, rotationZ, origX, origY, origZ) {
@@ -223,35 +230,38 @@ var Module = { TOTAL_MEMORY: 100*1024*1024 };
         });
     }
     
-    createBox = function() {
-        var box, position_x, position_z,
+    createBall = function(mass, mapURL, startX, startY, startZ, rotX, rotY, rotZ, size, useQuat) {
+        var ball, position_x, position_z,
             mass, startTransform, localInertia, boxShape, motionState, rbInfo, boxAmmo;
-        
-        position_x = -66;
-        position_z = -400;
 
-        // Create 3D box model
-        box = new THREE.Mesh(
-            new THREE.SphereGeometry( 20, 20, 20),
-            new THREE.MeshPhongMaterial({ color: 0xffffff, specular: 0x888888,  map: THREE.ImageUtils.loadTexture("/img/pokeball.png") })
+        // Create 3D ball model
+        ball = new THREE.Mesh(
+            new THREE.SphereGeometry( size, size, size),
+            new THREE.MeshPhongMaterial({ color: 0xffffff, specular: 0x888888,  map: THREE.ImageUtils.loadTexture(mapURL) })
         );
-        //box.material.color.setRGB( Math.random() * 100 / 100, Math.random() * 100 / 100, Math.random() * 100 / 100 );
-        box.castShadow = true;
-        box.receiveShadow = true;
-        box.useQuaternion = true;
-        scene.add( box );
+
+        ball.castShadow = true;
+        ball.receiveShadow = true;
+        ball.useQuaternion = useQuat;
+        ball.position.x = startX;
+        ball.position.y = startY;
+        ball.position.z = startZ;
+        ball.rotation.x = rotX;
+        ball.rotation.y = rotY;
+        ball.rotation.z = rotZ;
+
+        scene.add( ball );
         
-        new TWEEN.Tween(box.material).to({opacity: 1}, 500).start();
+        new TWEEN.Tween(ball.material).to({opacity: 1}, 500).start();
         
-        // Create box physics model
-        mass = 3 * 3 * 3;
+        // Create ball physics model
         startTransform = new Ammo.btTransform();
         startTransform.setIdentity();
-        startTransform.setOrigin(new Ammo.btVector3( position_x, 150, position_z ));
+        startTransform.setOrigin(new Ammo.btVector3( startX, startY, startZ ));
         
         localInertia = new Ammo.btVector3(0, 0, 0);
         
-        boxShape = new Ammo.btSphereShape(20);
+        boxShape = new Ammo.btSphereShape(size);
         boxShape.calculateLocalInertia( mass, localInertia );
         
         motionState = new Ammo.btDefaultMotionState( startTransform );
@@ -259,8 +269,8 @@ var Module = { TOTAL_MEMORY: 100*1024*1024 };
         boxAmmo = new Ammo.btRigidBody( rbInfo );
         scene.world.addRigidBody( boxAmmo );
         
-        boxAmmo.mesh = box;
-        boxes.push( boxAmmo );
+        boxAmmo.mesh = ball;
+        return boxAmmo;
     };
     
     updatePhysics = function() {
@@ -316,7 +326,7 @@ var Module = { TOTAL_MEMORY: 100*1024*1024 };
         // //Create a new box every second
         // now = new Date().getTime();
         // if ( now - lastbox > 2000 && boxes.length < 20) {
-        //     createBox();
+        //     createBall();
         //     lastbox = now;
         // }
         

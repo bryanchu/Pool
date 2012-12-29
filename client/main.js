@@ -23,7 +23,9 @@ var Module = { TOTAL_MEMORY: 100*1024*1024 };
                     Brown: 0x8B2500,
                     Gold: 0xFFB90F,
                     Pink: 0xFF52CB,
-                    Black: 0x000000};
+                    Black: 0x000000,
+                    White: 0xFFFFFF,
+                    Yellow: 0xFAFF6B};
     
     initScene = function() {
         var collisionConfiguration, dispatcher, overlappingPairCache, solver, // Ammo world
@@ -95,26 +97,43 @@ var Module = { TOTAL_MEMORY: 100*1024*1024 };
         //Load the meshes.
         var loader = new THREE.JSONLoader();
         var baseURL = "meshes/";
-        loader.load({color: COLORENUM.Red}, baseURL + "newTest.js", createBlender);
-        loader.load({color: COLORENUM.Orange}, baseURL + "topSickle.js", createBlender);
-        loader.load({color: COLORENUM.Orange}, baseURL + "rightSickle.js", createBlender);
-        loader.load({color: COLORENUM.Red, meshType: "Lambert"}, baseURL + "rightWall.js", createBlender);
-        loader.load({color: COLORENUM.Red, meshType: "Lambert"}, baseURL + "leftWall.js", createBlender);
-        loader.load({color: COLORENUM.Blue}, baseURL + "leftTopBlue.js", createBlender);
-        loader.load({color: COLORENUM.Blue}, baseURL + "leftTopBlueFat.js", createBlender);
-        loader.load({color: COLORENUM.Brown}, baseURL + "staryuBase.js", createBlender);
-        loader.load({color: COLORENUM.Gold}, baseURL + "staryuMiddle.js", createBlender);
-        loader.load({color: COLORENUM.Red}, baseURL + "staryuGem.js", createBlender);
-        loader.load({color: COLORENUM.Brown}, baseURL + "smallStaryuBase.js", createBlender);
-        loader.load({color: COLORENUM.Gold}, baseURL + "smallStaryuMiddle.js", createBlender);
-        loader.load({color: COLORENUM.Red}, baseURL + "smallStaryuGem.js", createBlender);
-        loader.load({color: COLORENUM.Gold, meshType: "Lambert"}, baseURL + "digletLeft.js", createBlender);
-        loader.load({color: COLORENUM.Pink}, baseURL + "digletLeftNose.js", createBlender);
-        loader.load({color: COLORENUM.Black}, baseURL + "digletLeftEyes.js", createBlender);
-        loader.load({color: COLORENUM.Gold, meshType: "Lambert"}, baseURL + "digletRight.js", createBlender);
-        loader.load({color: COLORENUM.Pink}, baseURL + "digletRightNose.js", createBlender);
-        loader.load({color: COLORENUM.Black}, baseURL + "digletRightEyes.js", createBlender);
-        loader.load({color: COLORENUM.Black}, baseURL + "digletLeftEyesOthers.js", createBlender);
+        loadMesh({color: COLORENUM.Red}, "newTest.js");
+        loadMesh({color: COLORENUM.Orange}, "topSickle.js");
+        loadMesh({color: COLORENUM.Orange}, "rightSickle.js");
+        loadMesh({color: COLORENUM.Red, meshType: "Lambert"}, "rightWall.js");
+        loadMesh({color: COLORENUM.Red, meshType: "Lambert"}, "leftWall.js");
+        loadMesh({color: COLORENUM.Blue}, "leftTopBlue.js");
+        loadMesh({color: COLORENUM.Blue}, "leftTopBlueFat.js");
+        loadMesh({color: COLORENUM.Brown}, "staryuBase.js");
+        loadMesh({color: COLORENUM.Gold}, "staryuMiddle.js");
+        loadMesh({color: COLORENUM.Red}, "staryuGem.js");
+        loadMesh({color: COLORENUM.Brown}, "smallStaryuBase.js");
+        loadMesh({color: COLORENUM.Gold}, "smallStaryuMiddle.js");
+        loadMesh({color: COLORENUM.Red}, "smallStaryuGem.js");
+        loadMesh({color: COLORENUM.Gold, meshType: "Lambert"}, "digletLeft.js");
+        loadMesh({color: COLORENUM.Pink}, "digletLeftNose.js");
+        loadMesh({color: COLORENUM.Black}, "digletLeftEyes.js");
+        loadMesh({color: COLORENUM.Gold, meshType: "Lambert"}, "digletRight.js");
+        loadMesh({color: COLORENUM.Pink}, "digletRightNose.js");
+        loadMesh({color: COLORENUM.Black}, "digletRightEyes.js");
+        loadMesh({color: COLORENUM.Black}, "digletLeftEyesOthers.js");
+        loadMesh({color: COLORENUM.Gold, meshType: "Lambert"}, "digletRightOthers.js");
+        loadMesh({color: COLORENUM.Black}, "digletRightEyesOthers.js");
+        loadMesh({color: COLORENUM.Pink}, "digletRightNoseOthers.js");
+        loadMesh({color: COLORENUM.Blue}, "bumper.js");
+        loadMesh({color: COLORENUM.Blue, meshType: "Lambert"}, "blueSides.js");
+        loadMesh({color: COLORENUM.White}, "flippers.js");
+        loadMesh({color: COLORENUM.Blue}, "pills.js");
+        loadMesh({color: COLORENUM.Blue}, "bellsproutHouse.js");
+        loadMesh({color: COLORENUM.Yellow}, "bellsprout.js");
+        loadMesh({color: COLORENUM.Black}, "bellsproutEyes.js");
+
+
+        loadMesh({color: COLORENUM.Black}, "text.js");
+
+        function loadMesh(config, url) {
+            loader.load(config, baseURL + url, createBlender);
+        }
 
         //Create Voltorbs.
         createBall(0, "img/voltorb.gif", -35, 0, -105, -Math.PI / 2, -Math.PI / 2, -Math.PI / 3, 22, false, false);
@@ -128,50 +147,10 @@ var Module = { TOTAL_MEMORY: 100*1024*1024 };
             var mesh = new THREE.Mesh( geometry, material );
             mesh.scale.set(50, 50, 50);
             scene.add(mesh);
+            return mesh;
         }
 
-        var wiperEnd = 20;
-        wiperGeometry = new THREE.CubeGeometry(180, 60, 60, 1);
-        wiperGeometry.vertices[0].x -= wiperEnd;//bottom near
-        wiperGeometry.vertices[0].z -= wiperEnd;
-        wiperGeometry.vertices[1].x -= wiperEnd;//top far
-        wiperGeometry.vertices[1].z += wiperEnd;
-        wiperGeometry.vertices[2].x -= wiperEnd;
-        wiperGeometry.vertices[2].z -= wiperEnd;//bottom near
-        wiperGeometry.vertices[3].x -= wiperEnd;
-        wiperGeometry.vertices[3].z += wiperEnd;//bottom far
-        // wiperGeometry.vertices[0].multiplyScalar(.5);
-        // wiperGeometry.vertices[1].multiplyScalar(.5);
-        // wiperGeometry.vertices[2].multiplyScalar(.5);
-        // wiperGeometry.vertices[3].multiplyScalar(.5);
-        var matrix = new THREE.Matrix4();
-        matrix.set(   1,    0,  0,  0,
-                      0,     1,  0,  0,
-                      0,     0,  1,  0,
-                      0,     0,  0,  1  );  
-        wiperGeometry.applyMatrix(matrix);
 
-        // wiperGeometry.mergeVertices();
-        // var modifier = new THREE.SubdivisionModifier(.2);
-        // modifier.modify(wiperGeometry);
-
-        // var wiperGeometry = new THREE.CylinderGeometry(60, 60, 180, 10, 10, false);
-        // var matrix = new THREE.Matrix4();
-        // matrix.set(   4,    0,  0,  0,
-        //               0,     4,  0,  0,
-        //               0,     0,  1,  0,
-        //               0,     0,  0,  1  );
-        // wiperGeometry.applyMatrix(matrix);
-
-        wiper = new THREE.Mesh(
-            // new THREE.WiperGeometry( 15, 15, 100, 100, 20 ),
-            wiperGeometry,
-            new THREE.MeshPhongMaterial({ specular: 0x888888, color: 0xFFFFff })
-            // new THREE.MeshBasicMaterial(0x564323)
-        );
-        wiper.receiveShadow = true;
-        wiper.useQuaternion = true;
-        scene.add( wiper );
 
         //wiper physics
         var wiperTransformQuat = new Ammo.btQuaternion();
@@ -192,8 +171,8 @@ var Module = { TOTAL_MEMORY: 100*1024*1024 };
         wiperAmmo = new Ammo.btRigidBody(wiperRbInfo);
         scene.world.addRigidBody(wiperAmmo);
 
-        wiperAmmo.mesh = wiper;
-        boxes.push(wiperAmmo);
+        // wiperAmmo.mesh = wiper;
+        // boxes.push(wiperAmmo);
 
         initControls();
         // boxes.push(createBall(9, "/img/pokeball.png", 0, 0, 0, 20));

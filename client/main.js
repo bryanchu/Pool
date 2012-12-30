@@ -25,7 +25,8 @@ var Module = { TOTAL_MEMORY: 100*1024*1024 };
                     Pink: 0xFF52CB,
                     Black: 0x000000,
                     White: 0xFFFFFF,
-                    Yellow: 0xFAFF6B};
+                    Yellow: 0xFAFF6B,
+                    Green: 0x00DE1A};
     
     initScene = function() {
         var collisionConfiguration, dispatcher, overlappingPairCache, solver, // Ammo world
@@ -127,6 +128,8 @@ var Module = { TOTAL_MEMORY: 100*1024*1024 };
         loadMesh({color: COLORENUM.Blue}, "bellsproutHouse.js");
         loadMesh({color: COLORENUM.Yellow}, "bellsprout.js");
         loadMesh({color: COLORENUM.Black}, "bellsproutEyes.js");
+        loadMesh({color: COLORENUM.Pink}, "bellsproutMouth.js");
+        loadMesh({color: COLORENUM.Green, meshType: "Lambert"}, "leaves.js");
 
 
         loadMesh({color: COLORENUM.Black}, "text.js");

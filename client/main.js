@@ -15,8 +15,8 @@ var Module = { TOTAL_MEMORY: 100*1024*1024 };
     
     var projector, renderer, scene, light, camera, controls, wiperLeft, wiperRight, wiperShape, wiperTransform,
         initScene, render, main, updatePhysics, wiperAmmoLeft, wiperAmmoRight, wiperPos = 0, leftWiperAngle = 0, rightWiperAngle = 0,
-        createBall, initControls, now, lastbox = 0, boxes = [], leftWiperPressed = false,
-        fieldWidth = 550, fieldHeight = 875,
+        createBall, initControls, now, lastbox = 0, boxes = [], leftWiperPressed = false, rightWiperPressed = false,
+        fieldWidth = 550, fieldHeight = 875, wiperSpeed = .4, wiperLimit = .06, animMeshes = {}, waitingAJAXCalls = 0,
         COLORENUM = {Red: 0xFF0000,
                     Orange: 0xFF8600,
                     Blue: 0x1F7CFF,
@@ -32,7 +32,6 @@ var Module = { TOTAL_MEMORY: 100*1024*1024 };
         var collisionConfiguration, dispatcher, overlappingPairCache, solver, // Ammo world
             ground, groundShape, groundTransform, groundMass, localInertia, motionState, rbInfo, groundAmmo;
         
-        
         // Projector
         projector = new THREE.Projector();
         
@@ -47,6 +46,48 @@ var Module = { TOTAL_MEMORY: 100*1024*1024 };
         
         // Scene
         scene = new THREE.Scene();
+
+        //Make critical AJAX calls early
+        var baseURL = "meshes/";
+        var loader = new THREE.JSONLoader();
+        storeMesh({color: COLORENUM.White, useQuat: true}, "flipperLeft.js", "leftWiper");
+        storeMesh({color: COLORENUM.White, useQuat: true}, "flipperRight.js", "rightWiper");
+
+        //Load the meshes.
+       
+        loadMesh({color: COLORENUM.Red}, "newTest.js");
+        loadMesh({color: COLORENUM.Orange}, "topSickle.js");
+        loadMesh({color: COLORENUM.Orange}, "rightSickle.js");
+        loadMesh({color: COLORENUM.Red, meshType: "Lambert"}, "rightWall.js");
+        loadMesh({color: COLORENUM.Red, meshType: "Lambert"}, "leftWall.js");
+        loadMesh({color: COLORENUM.Blue}, "leftTopBlue.js");
+        loadMesh({color: COLORENUM.Blue}, "leftTopBlueFat.js");
+        loadMesh({color: COLORENUM.Brown}, "staryuBase.js");
+        loadMesh({color: COLORENUM.Gold}, "staryuMiddle.js");
+        loadMesh({color: COLORENUM.Red}, "staryuGem.js");
+        loadMesh({color: COLORENUM.Brown}, "smallStaryuBase.js");
+        loadMesh({color: COLORENUM.Gold}, "smallStaryuMiddle.js");
+        loadMesh({color: COLORENUM.Red}, "smallStaryuGem.js");
+        loadMesh({color: COLORENUM.Gold, meshType: "Lambert"}, "digletLeft.js");
+        loadMesh({color: COLORENUM.Pink}, "digletLeftNose.js");
+        loadMesh({color: COLORENUM.Black}, "digletLeftEyes.js");
+        loadMesh({color: COLORENUM.Gold, meshType: "Lambert"}, "digletRight.js");
+        loadMesh({color: COLORENUM.Pink}, "digletRightNose.js");
+        loadMesh({color: COLORENUM.Black}, "digletRightEyes.js");
+        loadMesh({color: COLORENUM.Black}, "digletLeftEyesOthers.js");
+        loadMesh({color: COLORENUM.Gold, meshType: "Lambert"}, "digletRightOthers.js");
+        loadMesh({color: COLORENUM.Black}, "digletRightEyesOthers.js");
+        loadMesh({color: COLORENUM.Pink}, "digletRightNoseOthers.js");
+        loadMesh({color: COLORENUM.Blue}, "bumper.js");
+        loadMesh({color: COLORENUM.Blue, meshType: "Lambert"}, "blueSides.js");
+        loadMesh({color: COLORENUM.Blue}, "pills.js");
+        loadMesh({color: COLORENUM.Blue}, "bellsproutHouse.js");
+        loadMesh({color: COLORENUM.Yellow}, "bellsprout.js");
+        loadMesh({color: COLORENUM.Black}, "bellsproutEyes.js");
+        loadMesh({color: COLORENUM.Pink}, "bellsproutMouth.js");
+        loadMesh({color: COLORENUM.Green, meshType: "Lambert"}, "leaves.js");
+
+        loadMesh({color: COLORENUM.Black}, "text.js");
         
         // Light
         light = new THREE.DirectionalLight( 0xFFFFFF );
@@ -95,42 +136,7 @@ var Module = { TOTAL_MEMORY: 100*1024*1024 };
         //Create the ground.
         createWall(fieldWidth, fieldHeight, 2, THREE.ImageUtils.loadTexture("/img/background.png"), -Math.PI / 2, 0, 0, 0, -20, 0);
 
-        //Load the meshes.
-        var loader = new THREE.JSONLoader();
-        var baseURL = "meshes/";
-        loadMesh({color: COLORENUM.Red}, "newTest.js");
-        loadMesh({color: COLORENUM.Orange}, "topSickle.js");
-        loadMesh({color: COLORENUM.Orange}, "rightSickle.js");
-        loadMesh({color: COLORENUM.Red, meshType: "Lambert"}, "rightWall.js");
-        loadMesh({color: COLORENUM.Red, meshType: "Lambert"}, "leftWall.js");
-        loadMesh({color: COLORENUM.Blue}, "leftTopBlue.js");
-        loadMesh({color: COLORENUM.Blue}, "leftTopBlueFat.js");
-        loadMesh({color: COLORENUM.Brown}, "staryuBase.js");
-        loadMesh({color: COLORENUM.Gold}, "staryuMiddle.js");
-        loadMesh({color: COLORENUM.Red}, "staryuGem.js");
-        loadMesh({color: COLORENUM.Brown}, "smallStaryuBase.js");
-        loadMesh({color: COLORENUM.Gold}, "smallStaryuMiddle.js");
-        loadMesh({color: COLORENUM.Red}, "smallStaryuGem.js");
-        loadMesh({color: COLORENUM.Gold, meshType: "Lambert"}, "digletLeft.js");
-        loadMesh({color: COLORENUM.Pink}, "digletLeftNose.js");
-        loadMesh({color: COLORENUM.Black}, "digletLeftEyes.js");
-        loadMesh({color: COLORENUM.Gold, meshType: "Lambert"}, "digletRight.js");
-        loadMesh({color: COLORENUM.Pink}, "digletRightNose.js");
-        loadMesh({color: COLORENUM.Black}, "digletRightEyes.js");
-        loadMesh({color: COLORENUM.Black}, "digletLeftEyesOthers.js");
-        loadMesh({color: COLORENUM.Gold, meshType: "Lambert"}, "digletRightOthers.js");
-        loadMesh({color: COLORENUM.Black}, "digletRightEyesOthers.js");
-        loadMesh({color: COLORENUM.Pink}, "digletRightNoseOthers.js");
-        loadMesh({color: COLORENUM.Blue}, "bumper.js");
-        loadMesh({color: COLORENUM.Blue, meshType: "Lambert"}, "blueSides.js");
-        loadMesh({color: COLORENUM.Blue}, "pills.js");
-        loadMesh({color: COLORENUM.Blue}, "bellsproutHouse.js");
-        loadMesh({color: COLORENUM.Yellow}, "bellsprout.js");
-        loadMesh({color: COLORENUM.Black}, "bellsproutEyes.js");
-        loadMesh({color: COLORENUM.Pink}, "bellsproutMouth.js");
-        loadMesh({color: COLORENUM.Green, meshType: "Lambert"}, "leaves.js");
 
-        loadMesh({color: COLORENUM.Black}, "text.js");
         
 
         function loadMesh(config, url) {
@@ -172,52 +178,69 @@ var Module = { TOTAL_MEMORY: 100*1024*1024 };
         wiperAmmoLeft = new Ammo.btRigidBody(wiperRbInfo);
         scene.world.addRigidBody(wiperAmmoLeft);
 
+        wiperAmmoRight= new Ammo.btRigidBody(wiperRbInfo);
+        scene.world.addRigidBody(wiperAmmoRight);
+
         // wiperAmmo.mesh = wiper;
         // boxes.push(wiperAmmo);
 
         initControls();
         // boxes.push(createBall(9, "/img/pokeball.png", 0, 0, 0, 20));
 
-        var leftWiperStore = storeMeshAjax({color: COLORENUM.White, useQuat: true, assign: "wiperAmmo"}, "flipperLeft.js");
 
-        (function keepCheckingLeft() {
-            setTimeout(function() {
-                if (wiperAmmoLeft.mesh = leftWiperStore.getStoredMesh()) {
-                    var dummyLeft = new THREE.Object3D();
-                    var xOffset = 110;
-                    var zOffset = -360;
-                    wiperAmmoLeft.mesh.position.x = xOffset;
-                    wiperAmmoLeft.mesh.position.z = zOffset;
-                    dummyLeft.position.x = -xOffset;
-                    dummyLeft.position.z = -zOffset;
-                    dummyLeft.add(wiperAmmoLeft.mesh);
-                    wiperAmmoLeft.dummyMesh = dummyLeft;
-                    scene.add(dummyLeft);
-                } else {
-                    keepCheckingLeft();
-                }
-            }, 100);
-        })();
+        // (function waitForAjaxLeft() {   //Stop execution to wait for ajax call to finish before going into physics initialization
+        //     setTimeout(function() {
+        //         if (wiperAmmoLeft.mesh = leftWiperStore.getStoredMesh()) {
+        //             var dummyLeft = new THREE.Object3D();
+        //             var xOffset = 110;
+        //             var zOffset = -360;
+        //             wiperAmmoLeft.mesh.position.x = xOffset;
+        //             wiperAmmoLeft.mesh.position.z = zOffset;
+        //             dummyLeft.position.x = -xOffset;
+        //             dummyLeft.position.z = -zOffset;
+        //             dummyLeft.add(wiperAmmoLeft.mesh);
+        //             wiperAmmoLeft.dummyMesh = dummyLeft;
+        //             scene.add(dummyLeft);
+        //         } else {
+        //             waitForAjaxLeft();
+        //         }
+        //     }, 100);
+        // })();
 
-        function storeMeshAjax(config, url) {
-            var resultMesh;
+        // (function waitForAjaxRight() {
+        //     setTimeout(function() {
+        //         if (wiperAmmoRight.mesh = rightWiperStore.getStoredMesh()) {
+        //             var dummyRight = new THREE.Object3D();
+        //             var xOffset = 110;
+        //             var zOffset = -360;
+        //             wiperAmmoRight.mesh.position.x = xOffset;
+        //             wiperAmmoRight.mesh.position.z = zOffset;
+        //             dummyRight.position.x = -xOffset;
+        //             dummyRight.position.z = -zOffset;
+        //             dummyRight.add(wiperAmmoRight.mesh);
+        //             wiperAmmoRight.dummyMesh = dummyRight;
+        //             scene.add(dummyLeft);
+        //         } else {
+        //             waitForAjaxRight();
+        //         }
+        //     }, 100);
+        // })();
+
+        function storeMesh(config, url, name) {
+            waitingAJAXCalls -= 1;
             loader.load(config, baseURL + url, function(geometry, config) {
-                resultMesh = createBlender(geometry, config);
+                waitingAJAXCalls += 1;
+                animMeshes[name] = createBlender(geometry, config);
+                initAnim();
             });
-            return {
-                getStoredMesh: function() {
-                    return resultMesh;
-                }
-            };
         }
-        // wiperAmmoRight.mesh= loadMesh({color: COLORENUM.White}, "flipperRight.js");
     };
 
     function createWall(width, height, depth, img, rotationX, rotationY, rotationZ, origX, origY, origZ) {
         //mesh
         var ground = new THREE.Mesh(
             new THREE.CubeGeometry( width, height, depth ),
-            typeof img == "number" ? new THREE.MeshBasicMaterial({ color: img }) :  new THREE.MeshPhongMaterial({ color: 0xffffff, specular: 0x888888,  map: img })
+            typeof img == "number" ? new THREE.MeshBasicMaterial({ color: img }) : new THREE.MeshPhongMaterial({ color: 0xffffff, specular: 0x888888,  map: img })
         );
         ground.receiveShadow = true;
         ground.position.x = origX;
@@ -318,18 +341,18 @@ var Module = { TOTAL_MEMORY: 100*1024*1024 };
             boxes[i].mesh.quaternion.z = rotation.z();
             boxes[i].mesh.quaternion.w = rotation.w();
         };
-
-        if (leftWiperPressed) {
+        
+        if (leftWiperPressed && leftWiperAngle < wiperLimit) {
             var wiperRotationQuat = new Ammo.btQuaternion();
-            leftWiperAngle < Math.PI * 3 && wiperRotationQuat.setEuler(leftWiperAngle += .02, 0, 0);
-
             var wiperTransformChange = new Ammo.btTransform();
+
+            wiperRotationQuat.setEuler(leftWiperAngle += .02, 0, 0);
+
+            
             wiperTransformChange.setRotation(wiperRotationQuat);
             var offset = -1.7;
             var yshift = -1000 * (Math.sin(leftWiperAngle * Math.PI / 2 / 3.1 + offset) - Math.sin(offset));
             wiperTransformChange.setOrigin(new Ammo.btVector3(-400 * Math.sin(leftWiperAngle), 0, yshift));
-            console.log(leftWiperAngle);
-            console.log(yshift);
             wiperAmmoLeft.setMotionState(new Ammo.btDefaultMotionState(wiperTransformChange));
 
             // var wiperMeshRotation = wiperTransformChange.getRotation();
@@ -337,14 +360,97 @@ var Module = { TOTAL_MEMORY: 100*1024*1024 };
             // wiperAmmoLeft.mesh.quaternion.y = wiperMeshRotation.y();
             // wiperAmmoLeft.mesh.quaternion.z = wiperMeshRotation.z();
             // wiperAmmoLeft.mesh.quaternion.w = wiperMeshRotation.w();
-            wiperAmmoLeft.dummyMesh.rotation.y += .02;
+            wiperAmmoLeft.dummyMesh.rotation.y += wiperSpeed;
 
             // origin = wiperTransformChange.getOrigin();
             // wiperAmmoLeft.mesh.position.x = origin.x();
             // wiperAmmoLeft.mesh.position.y = origin.y();
             // wiperAmmoLeft.mesh.position.z = origin.z();
+        } else if (!leftWiperPressed && leftWiperAngle > 0) {
+            var wiperRotationQuat = new Ammo.btQuaternion();
+            var wiperTransformChange = new Ammo.btTransform();
+
+            wiperRotationQuat.setEuler(leftWiperAngle -= .02, 0, 0);
+
+            wiperTransformChange.setRotation(wiperRotationQuat);
+            var offset = -1.7;
+            var yshift = -1000 * (Math.sin(leftWiperAngle * Math.PI / 2 / 3.1 + offset) - Math.sin(offset));
+            wiperTransformChange.setOrigin(new Ammo.btVector3(-400 * Math.sin(leftWiperAngle), 0, yshift));
+            wiperAmmoLeft.setMotionState(new Ammo.btDefaultMotionState(wiperTransformChange));
+
+            wiperAmmoLeft.dummyMesh.rotation.y -= wiperSpeed;
+        }
+
+        if (rightWiperPressed && rightWiperAngle < wiperLimit) {
+            var wiperRotationQuat = new Ammo.btQuaternion();
+            var wiperTransformChange = new Ammo.btTransform();
+
+            wiperRotationQuat.setEuler(rightWiperAngle += .02, 0, 0);
+
+            
+            wiperTransformChange.setRotation(wiperRotationQuat);
+            var offset = 1.7;
+            var yshift = 1000 * (Math.sin(leftWiperAngle * Math.PI / 2 / 3.1 + offset) - Math.sin(offset));
+            wiperTransformChange.setOrigin(new Ammo.btVector3(-400 * Math.sin(rightWiperAngle), 0, yshift));
+            wiperAmmoRight.setMotionState(new Ammo.btDefaultMotionState(wiperTransformChange));
+
+            // var wiperMeshRotation = wiperTransformChange.getRotation();
+            // wiperAmmoLeft.mesh.quaternion.x = wiperMeshRotation.x();
+            // wiperAmmoLeft.mesh.quaternion.y = wiperMeshRotation.y();
+            // wiperAmmoLeft.mesh.quaternion.z = wiperMeshRotation.z();
+            // wiperAmmoLeft.mesh.quaternion.w = wiperMeshRotation.w();
+            wiperAmmoRight.dummyMesh.rotation.y -= wiperSpeed;
+
+            // origin = wiperTransformChange.getOrigin();
+            // wiperAmmoLeft.mesh.position.x = origin.x();
+            // wiperAmmoLeft.mesh.position.y = origin.y();
+            // wiperAmmoLeft.mesh.position.z = origin.z();
+        } else if (!rightWiperPressed && rightWiperAngle > 0) {
+            var wiperRotationQuat = new Ammo.btQuaternion();
+            var wiperTransformChange = new Ammo.btTransform();
+
+            wiperRotationQuat.setEuler(rightWiperAngle -= .02, 0, 0);
+
+            wiperTransformChange.setRotation(wiperRotationQuat);
+            var offset = -1.7;
+            var yshift = -1000 * (Math.sin(leftWiperAngle * Math.PI / 2 / 3.1 + offset) - Math.sin(offset));
+            wiperTransformChange.setOrigin(new Ammo.btVector3(-400 * Math.sin(leftWiperAngle), 0, yshift));
+            wiperAmmoLeft.setMotionState(new Ammo.btDefaultMotionState(wiperTransformChange));
+
+            wiperAmmoRight.dummyMesh.rotation.y += wiperSpeed;
         }
     };
+
+    function initAnim() {
+        if (!waitingAJAXCalls) {
+            wiperAmmoLeft.mesh = animMeshes.leftWiper;
+            var dummyLeft = new THREE.Object3D();
+            var xOffset = 110;
+            var zOffset = -380;
+            wiperAmmoLeft.mesh.position.x = xOffset;
+            wiperAmmoLeft.mesh.position.z = zOffset;
+            dummyLeft.position.x = -xOffset;
+            dummyLeft.position.z = -zOffset;
+            dummyLeft.add(wiperAmmoLeft.mesh);
+            wiperAmmoLeft.dummyMesh = dummyLeft;
+            scene.add(dummyLeft);
+
+            wiperAmmoRight.mesh = animMeshes.rightWiper;
+            var dummyRight = new THREE.Object3D();
+            xOffset = -30;
+            zOffset = -380;
+            wiperAmmoRight.mesh.position.x = xOffset;
+            wiperAmmoRight.mesh.position.z = zOffset;
+            dummyRight.position.x = -xOffset;
+            dummyRight.position.z = -zOffset;
+            dummyRight.add(wiperAmmoRight.mesh);
+            wiperAmmoRight.dummyMesh = dummyRight;
+            scene.add(dummyRight);
+
+            TWEEN.start();
+            requestAnimFrame(main);
+        }
+    }
 
     // function rotateAroundWorldAxis(object, axis, radians) {
     //     arotWorldMatrix = new THREE.Matrix4();
@@ -375,10 +481,5 @@ var Module = { TOTAL_MEMORY: 100*1024*1024 };
         window.requestAnimFrame(main);
     };
     
-    window.onload = function() {
-        initScene();
-        TWEEN.start();
-        requestAnimFrame(main);
-    }
-    
+    window.onload = initScene;
 })();

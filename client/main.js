@@ -12,12 +12,11 @@ window['requestAnimFrame'] = (function(){
 var Module = { TOTAL_MEMORY: 100*1024*1024 };
 
 (function() {
-    
     var projector, renderer, scene, light, camera, controls, wiperLeft, wiperRight, wiperShape, wiperTransform,
         initScene, render, main, updatePhysics, wiperAmmoLeft, wiperAmmoRight, wiperPos = 0, leftWiperAngle = 0, rightWiperAngle = 0,
         createBall, initControls, now, lastbox = 0, boxes = [], leftWiperPressed = false, rightWiperPressed = false,
         fieldWidth = 550, fieldHeight = 875, wiperSpeed = .4, wiperLimit = .8, animMeshes = {}, waitingAJAXCalls, ballAmmo,
-        rightWiperX = 20, bothWiperY = 0, bothWiperZ = 430, leftWiperX = -70, rightAmmoUp = false, leftAmmoUp = false,
+        rightWiperX = 20, bothWiperY = 0, rightWiperZ = 360, leftWiperZ = 360, leftWiperX = -100, rightAmmoUp = false, leftAmmoUp = false,
         leftForce = false, rightForce = false, leftHolding = false, rightHolding = false,
         COLORENUM = {Red: 0xFF0000,
                     Orange: 0xFF8600,
@@ -53,31 +52,31 @@ var Module = { TOTAL_MEMORY: 100*1024*1024 };
         overlappingPairCache = new Ammo.btDbvtBroadphase();
         solver = new Ammo.btSequentialImpulseConstraintSolver();
         scene.world = new Ammo.btDiscreteDynamicsWorld( dispatcher, overlappingPairCache, solver, collisionConfiguration );
-        scene.world.setGravity(new Ammo.btVector3(0, -420, 100));
+        scene.world.setGravity(new Ammo.btVector3(0, -42, 200));
 
-        // height depth width
-        
-        wiperAmmoRight= createWall({width: 100,
-                                    height: 60,
+        //flippers
+        var wiperWidth = 70, wiperHeight = 100, wiperRotation = .7;
+        wiperAmmoRight= createWall({width: wiperWidth,
+                                    height: wiperHeight,
                                     depth: 1,
                                     img: null,
-                                    rotationX: 10,
-                                    rotationY: 0,
+                                    rotationX: wiperRotation,
+                                    rotationY: Math.PI / 2,
                                     rotationZ: 0,
                                     origX: rightWiperX,
                                     origY: bothWiperY,
-                                    origZ: bothWiperZ,
+                                    origZ: rightWiperZ,
                                     rest: 1000});
-        wiperAmmoLeft = createWall({width: 100,
-                                    height: 60,
+        wiperAmmoLeft = createWall({width: wiperWidth,
+                                    height: wiperHeight,
                                     depth: 1,
                                     img: null,
-                                    rotationX: -10,
-                                    rotationY: 0,
+                                    rotationX: -wiperRotation,
+                                    rotationY: Math.PI / 2,
                                     rotationZ: 0,
                                     origX: leftWiperX,
                                     origY: bothWiperY,
-                                    origZ: bothWiperZ,
+                                    origZ: leftWiperZ,
                                     rest: 1000});
 
         //Make critical AJAX calls early
@@ -166,8 +165,9 @@ var Module = { TOTAL_MEMORY: 100*1024*1024 };
                     rotationY: 0,
                     rotationZ: 0,
                     origX: 0,
-                    origY: -20});
-        
+                    origY: -20,
+                    origZ: 0});
+
         function loadMesh(config, url) {
             return loader.load(config, baseURL + url, createBlender);
         }
@@ -222,9 +222,9 @@ var Module = { TOTAL_MEMORY: 100*1024*1024 };
             });
         }
 
-        ballAmmo = createBall(100, "img/pokeball.png", -100, 10, 200, 0, 0, 0, 13, true, 2);
+        ballAmmo = createBall(100, "img/pokeball.png", 10, 10, 200, 0, 0, 0, 13, true, 2);
     };
-
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     function createWall(config) {
         //if (img) {
         if (config.img) {
@@ -286,19 +286,18 @@ var Module = { TOTAL_MEMORY: 100*1024*1024 };
         });
     };
 
-    var xLimitRight = -30, xOrigRight = 15, zOrig,
+    var xLimitRight = -30, xOrigRight = 15, zOrig = 340,
         xLimitLeft = -44, xOrigLeft = -100;
 
     function createForce(left) {
         var distX, distY, vector,
             posX = ballAmmo.mesh.position.x,
-            posY = ballAmmo.mesh.position.y,
             posZ = ballAmmo.mesh.position.z;
         if (left && checkZone(true)) {
-            vector = new Ammo.btVector3((zOrigLeft - posZ) * ((xOrigLeft - posX) / 40) * 1000, 0, -100000 * (((posZ - zOrig) / 30) + .6) * (((xOrigLeft - posX) / 40) + .8));
+            vector = new Ammo.btVector3((zOrig - posZ) * ((xOrigLeft - posX) / 40) * 1000, 0, -100000 * (((posZ - zOrig) / 30) + .6) * (((xOrigLeft - posX) / 40) + .8));
             ballAmmo.applyCentralImpulse(vector);
         } else if (checkZone(false)) {
-            vector = new Ammo.btVector3((zOrigRight - posZ) * ((xOrigRight - posX) / 40) * 1000, 0, -100000 * (((posZ - zOrig) / 30) + .6) * (((xOrigRight - posX) / 40) + .8));
+            vector = new Ammo.btVector3((zOrig - posZ) * ((xOrigRight - posX) / 40) * 1000, 0, -100000 * (((posZ - zOrig) / 30) + .6) * (((xOrigRight - posX) / 40) + .8));
             console.log(vector.getX());
             console.log(vector.getY());
             console.log(vector.getZ());
@@ -307,12 +306,26 @@ var Module = { TOTAL_MEMORY: 100*1024*1024 };
     };
 
     function checkZone(left) {
-        if (left) {
-
-        } else {
-
+        var posX = ballAmmo.mesh.position.x,
+            posZ = ballAmmo.mesh.position.z;
+        if (left && posX < xLimitLeft && posX < leftWiperX) {
+            if (posZ > zOrig) {
+                debugger;
+                return posZ < zOrig + (posX - leftWiperX);
+            } else {
+                debugger;
+                return posZ > zOrig - (posX - leftWiperX) * .5;
+            }
+            return ballAmmo.mesh.position.x
+        } else if (posX < rightWiperX && posX > xLimitRight) {
+            if (posZ > zOrig) {
+                debugger;
+                return posZ < zOrig + (rightWiperX - posX);
+            } else {
+                debugger;
+                return posZ > zOrig - (rightWiperX - posX) * .5;
+            }
         }
-        return true;
     }
     
     createBall = function(mass, mapURL, startX, startY, startZ, rotX, rotY, rotZ, size, useQuat, rest) {

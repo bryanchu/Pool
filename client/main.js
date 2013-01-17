@@ -17,7 +17,7 @@ var Module = { TOTAL_MEMORY: 100*1024*1024 };
         createBall, initControls, now, lastbox = 0, boxes = [], leftWiperPressed = false, rightWiperPressed = false,
         fieldWidth = 550, fieldHeight = 875, wiperSpeed = .4, wiperLimit = .8, animMeshes = {}, waitingAJAXCalls, ballAmmo,
         rightWiperX = 20, bothWiperY = 0, rightWiperZ = 360, leftWiperZ = 360, leftWiperX = -100, rightAmmoUp = false, leftAmmoUp = false,
-        leftForce = false, rightForce = false, leftHolding = false, rightHolding = false,
+        leftForce = false, rightForce = false, leftHolding = false, rightHolding = false, firstSpace = true,
         COLORENUM = {Red: 0xFF0000,
                     Orange: 0xFF8600,
                     Blue: 0x1F7CFF,
@@ -167,6 +167,17 @@ var Module = { TOTAL_MEMORY: 100*1024*1024 };
                     origX: 0,
                     origY: -20,
                     origZ: 0});
+        //bottom starting wall
+        createWall({width: 700,
+                    height: 100,
+                    depth: 1,
+                    img: null,
+                    rotationX: 0,
+                    rotationY: Math.PI / 2,
+                    rotationZ: 0,
+                    origX: 200,
+                    origY: 0,
+                    origZ: 440});
 
         function loadMesh(config, url) {
             return loader.load(config, baseURL + url, createBlender);
@@ -188,29 +199,15 @@ var Module = { TOTAL_MEMORY: 100*1024*1024 };
             return mesh;
         }
 
-        //wiper physics
-        // var wiperTransformQuat = new Ammo.btQuaternion();
-        // wiperTransformQuat.setEuler(10, 0, 0);
-        
-
-        // wiperTransform = new Ammo.btTransform();
-        // wiperTransform.setRotation(wiperTransformQuat);
-        // wiperTransform.setOrigin(new Ammo.btVector3(20, 0, 440));
-
-        // var wiperLocalInertia = new Ammo.btVector3(0, 0, 0);        
-
-        // wiperShape = new Ammo.btBoxShape(new Ammo.btVector3(60, 60, 60));
-        // wiperShape.calculateLocalInertia(0, wiperLocalInertia);
-
-        // var wiperMotionState = new Ammo.btDefaultMotionState(wiperTransform);
-        // var wiperRbInfo = new Ammo.btRigidBodyConstructionInfo(0, wiperMotionState, wiperShape, wiperLocalInertia);
-        // wiperAmmoLeft = new Ammo.btRigidBody(wiperRbInfo);
-        // scene.world.addRigidBody(wiperAmmoLeft);
-
-        // wiperAmmoRight= new Ammo.btRigidBody(wiperRbInfo);
-        // scene.world.addRigidBody(wiperAmmoRight);
-
-
+        createCurvedWall({
+            reps: 16,
+            startAngle: -Math.PI / 2,
+            endAngle: Math.PI / 2,
+            centerX: -20,
+            centerZ: -160,
+            radius: 300,
+            stretch: .8
+        });
 
         initControls();
 
@@ -221,10 +218,28 @@ var Module = { TOTAL_MEMORY: 100*1024*1024 };
                 initAnim();
             });
         }
-
-        ballAmmo = createBall(100, "img/pokeball.png", 10, 10, 200, 0, 0, 0, 13, true, 2);
+        var startX = 205;
+        ballAmmo = createBall(100, "img/pokeball.png", startX, 10, 100, 0, 0, 0, 13, true, 2);
     };
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    function createCurvedWall(config) {
+        var rotAngle;
+        for (var i = 0; i < config.reps; i++) {
+            rotAngle = config.startAngle + (((config.endAngle - config.startAngle) / config.reps) * i);
+            createWall({width: 100,//2 * Math.asin(Math.sin((config.endAngle - config.startAngle) / config.reps) * config.stretch) * config.radius,
+                        height: 500,
+                        depth: 1,
+                        img: null,
+                        rotationX: Math.atan(Math.tan(rotAngle) / config.stretch),
+                        rotationY: Math.PI / 2,
+                        rotationZ: 0,
+                        origX: config.centerX - ((Math.sin(rotAngle) * config.radius) * config.stretch),
+                        origY: 0,
+                        origZ: config.centerZ - ((Math.cos(rotAngle) * config.radius) * config.stretch)
+            });
+        }
+    }
+
     function createWall(config) {
         //if (img) {
         if (config.img) {
@@ -241,7 +256,7 @@ var Module = { TOTAL_MEMORY: 100*1024*1024 };
             ground.rotation.z = config.rotationZ;
             scene.add( ground );
         }
-        
+        console.log(config.origX);console.log(config.origZ);console.log(config);
         //physics
         var transformQuat = new Ammo.btQuaternion();
         transformQuat.setEuler(config.rotationX, config.rotationY, config.rotationZ);
@@ -273,6 +288,9 @@ var Module = { TOTAL_MEMORY: 100*1024*1024 };
                 rightWiperPressed = true;
                 rightForce = !rightHolding;
                 rightHolding = true;
+            } else if (e.keyCode == 32 && firstSpace) {
+                firstSpace = false;
+                ballAmmo.applyCentralImpulse(new Ammo.btVector3(0, 0, -200000));
             }
         });
         document.addEventListener('keyup', function(e) {

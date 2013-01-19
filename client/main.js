@@ -1,3 +1,4 @@
+//Bryan Chu | Pokemon Pinball in WEBGL
 window['requestAnimFrame'] = (function(){
   return  window.requestAnimationFrame       || 
           window.webkitRequestAnimationFrame || 
@@ -16,8 +17,8 @@ var Module = { TOTAL_MEMORY: 100*1024*1024 };
         initScene, render, main, updatePhysics, wiperAmmoLeft, wiperAmmoRight, wiperPos = 0, leftWiperAngle = 0, rightWiperAngle = 0,
         createBall, initControls, now, lastbox = 0, boxes = [], leftWiperPressed = false, rightWiperPressed = false,
         fieldWidth = 550, fieldHeight = 875, wiperSpeed = .4, wiperLimit = .8, animMeshes = {}, waitingAJAXCalls, ballAmmo,
-        rightWiperX = 20, bothWiperY = 0, rightWiperZ = 360, leftWiperZ = 360, leftWiperX = -100, rightAmmoUp = false, leftAmmoUp = false,
-        leftForce = false, rightForce = false, leftHolding = false, rightHolding = false, firstSpace = true,
+        rightWiperX = 25, bothWiperY = 0, rightWiperZ = 360, leftWiperZ = 360, leftWiperX = -100, rightAmmoUp = false, leftAmmoUp = false,
+        leftForce = false, rightForce = false, leftHolding = false, rightHolding = false, firstSpace = true, defaultYRot = Math.PI / 2, defaultWallWidth = 100,
         COLORENUM = {Red: 0xFF0000,
                     Orange: 0xFF8600,
                     Blue: 0x1F7CFF,
@@ -155,30 +156,6 @@ var Module = { TOTAL_MEMORY: 100*1024*1024 };
         controls.noPan = false;
         controls.keys = [65, 83, 68];
 
-        //Create the ground.
-        //width, height, depth, img, rotationX, rotationY, rotationZ, origX, origY, origZ, rest
-        createWall({width: fieldWidth,
-                    height: fieldHeight,
-                    depth: 2,
-                    img: THREE.ImageUtils.loadTexture("/img/background.png"),
-                    rotationX: -Math.PI / 2,
-                    rotationY: 0,
-                    rotationZ: 0,
-                    origX: 0,
-                    origY: -20,
-                    origZ: 0});
-        //bottom starting wall
-        createWall({width: 700,
-                    height: 100,
-                    depth: 1,
-                    img: null,
-                    rotationX: 0,
-                    rotationY: Math.PI / 2,
-                    rotationZ: 0,
-                    origX: 200,
-                    origY: 0,
-                    origZ: 440});
-
         function loadMesh(config, url) {
             return loader.load(config, baseURL + url, createBlender);
         }
@@ -187,6 +164,9 @@ var Module = { TOTAL_MEMORY: 100*1024*1024 };
         createBall(0, "img/voltorb.gif", -35, 0, -105, -Math.PI / 2, -Math.PI / 2, -Math.PI / 3, 22, false, false);
         createBall(0, "img/voltorb.gif", -85, 0, -155, -Math.PI / 2, -Math.PI / 2, -Math.PI / 3, 22, false, false);
         createBall(0, "img/voltorb.gif", -20, 0, -185, -Math.PI / 2, -Math.PI / 2, -Math.PI / 3, 22, false, false);
+        //Create diglet ammos.
+        createBall(0, null, -190, 0, 135, 0, 0, 0, 22, true);
+        createBall(0, null, 100, 0, 140, 0, 0, 0, 22, true);
 
         function createBlender(geometry, config) {
             geometry.mergeVertices();
@@ -198,15 +178,155 @@ var Module = { TOTAL_MEMORY: 100*1024*1024 };
             scene.add(mesh);
             return mesh;
         }
-
+        //TODO: fix ammo mesh rotation correlation.
+        //Create the ground image.
+        createWall({width: fieldWidth,
+                    height: fieldHeight,
+                    depth: 2,
+                    img: THREE.ImageUtils.loadTexture("/img/DottedCross.jpg"),//null,//THREE.ImageUtils.loadTexture("/img/background.png"),
+                    rotationX: 0, 
+                    rotationY: 0,
+                    rotationZ: Math.PI / 2,
+                    origX: 0,
+                    origY: -20,
+                    origZ: 0,
+                    meshOnly: true});
+        //Create the ground ammo.
+        createWall({width: fieldWidth * 2,
+                    height: fieldHeight,
+                    depth: 2,
+                    img: null,
+                    rotationX: 0,
+                    rotationY: 0,
+                    rotationZ: 0,
+                    origX: 0,
+                    origY: -20,
+                    origZ: 0});
+        //bottom starting wall
+        createWall({width: defaultWallWidth,
+                    height: 100,
+                    depth: 1,
+                    img: null,
+                    rotationX: 0,
+                    rotationY: defaultYRot,
+                    rotationZ: 0,
+                    origX: 200,
+                    origY: 0,
+                    origZ: 440});
+        //wall under staryu
+        createWall({width: defaultWallWidth,
+                    height: 65,
+                    depth: 1,
+                    img: null,
+                    rotationX: Math.PI / 4,
+                    rotationY: defaultYRot,
+                    rotationZ: 0,
+                    origX: -108,
+                    origY: 0,
+                    origZ: -42});
+        //smaller wall
+        createWall({width: defaultWallWidth,
+                    height: 30,
+                    depth: 1,
+                    img: null,
+                    rotationX: Math.PI / 4,
+                    rotationY: defaultYRot,
+                    rotationZ: 0,
+                    origX: -153,
+                    origY: 0,
+                    origZ: 37});
+        //straight vertical wall on staryu island
+        createWall({width: defaultWallWidth,
+                    height: 35,
+                    depth: 1,
+                    img: null,
+                    rotationX: Math.PI / 2,
+                    rotationY: defaultYRot,
+                    rotationZ: 0,
+                    origX: -135,
+                    origY: 0,
+                    origZ: -210});
+        //straight extension of staryu island
+        createWall({width: defaultWallWidth,
+                    height: 70,
+                    depth: 1,
+                    img: null,
+                    rotationX: -Math.PI / 4,
+                    rotationY: defaultYRot,
+                    rotationZ: 0,
+                    origX: -110,
+                    origY: 0,
+                    origZ: -90});
+        //left vertical blue wall
+        createWall({width: defaultWallWidth,
+                    height: 100,
+                    depth: 1,
+                    img: null,
+                    rotationX: Math.PI / 2,
+                    rotationY: defaultYRot,
+                    rotationZ: 0})
+        // top red semicircle
         createCurvedWall({
-            reps: 16,
+            reps: 25,
             startAngle: -Math.PI / 2,
-            endAngle: Math.PI / 2,
+            endAngle: 1 * Math.PI / 2,
             centerX: -20,
-            centerZ: -160,
-            radius: 300,
-            stretch: .8
+            centerZ: -148,//160,
+            radius: 245
+        });
+        //left upper wall
+        createCurvedWall({
+            reps: 10,
+            startAngle: 1.1,
+            endAngle: 2.2,
+            centerX: 145,
+            centerZ: -125,
+            radius: 400
+        });
+        //right upper wall
+        createCurvedWall({
+            reps: 10,
+            startAngle: -2.1,
+            endAngle: -1.2,
+            centerX: -235,
+            centerZ: -125,
+            radius: 400
+        });
+        //left side of small left island
+        createCurvedWall({
+            reps: 8,
+            startAngle: 1.3,
+            endAngle: 2.2,
+            centerX: 20,
+            centerZ: -80,
+            radius: 230
+        });
+        //right side of small left island
+        createCurvedWall({
+            reps: 8,
+            startAngle: 1.4,
+            endAngle: 2.4,
+            centerX: 10,
+            centerZ: -120,
+            radius: 210
+        });
+        //left side of staryu island
+        createCurvedWall({
+            reps: 8,
+            startAngle: 1.15,
+            endAngle: 2.1,
+            centerX: 60,
+            centerZ: -120,
+            radius: 220
+        });
+        //inner curve of staryu island
+        createCurvedWall({
+            reps: 6,
+            startAngle: 1.1,
+            endAngle: 2.2,
+            centerX: -75,
+            centerZ: -150,
+            radius: 70
         });
 
         initControls();
@@ -219,23 +339,25 @@ var Module = { TOTAL_MEMORY: 100*1024*1024 };
             });
         }
         var startX = 205;
-        ballAmmo = createBall(100, "img/pokeball.png", startX, 10, 100, 0, 0, 0, 13, true, 2);
+        ballAmmo = createBall(100, "img/pokeball.png", -160, 0, 70, 0, 0, 0, 13, true, 2);
     };
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     function createCurvedWall(config) {
         var rotAngle;
         for (var i = 0; i < config.reps; i++) {
             rotAngle = config.startAngle + (((config.endAngle - config.startAngle) / config.reps) * i);
-            createWall({width: 100,//2 * Math.asin(Math.sin((config.endAngle - config.startAngle) / config.reps) * config.stretch) * config.radius,
-                        height: 500,
+            // newRotX = Math.atan(Math.tan(rotAngle) / config.stretch);
+            // console.log(newRotX);
+            createWall({width: defaultWallWidth,
+                        height: (config.endAngle - config.startAngle) / config.reps * config.radius,//500,
                         depth: 1,
                         img: null,
-                        rotationX: Math.atan(Math.tan(rotAngle) / config.stretch),
-                        rotationY: Math.PI / 2,
+                        rotationX: rotAngle,
+                        rotationY: defaultYRot,
                         rotationZ: 0,
-                        origX: config.centerX - ((Math.sin(rotAngle) * config.radius) * config.stretch),
+                        origX: config.centerX - (Math.sin(rotAngle) * config.radius),
                         origY: 0,
-                        origZ: config.centerZ - ((Math.cos(rotAngle) * config.radius) * config.stretch)
+                        origZ: config.centerZ - (Math.cos(rotAngle) * config.radius)
             });
         }
     }
@@ -244,37 +366,41 @@ var Module = { TOTAL_MEMORY: 100*1024*1024 };
         //if (img) {
         if (config.img) {
             var ground = new THREE.Mesh(
-                new THREE.CubeGeometry( config.width, config.height, config.depth ),
+                new THREE.CubeGeometry( config.height, config.width, config.depth ),
                 typeof config.img == "number" ? new THREE.MeshBasicMaterial({ color: config.img }) : new THREE.MeshPhongMaterial({ color: 0xffffff, specular: 0x888888,  map: config.img })
             );
             ground.receiveShadow = true;
+            ground.useQuaternion = false;
             ground.position.x = config.origX;
             ground.position.y = config.origY;
             ground.position.z = config.origZ;
-            ground.rotation.x = config.rotationX;
-            ground.rotation.y = config.rotationY;
+            ground.rotation.x = config.rotationY - Math.PI / 2;//0
+            ground.rotation.y = config.rotationX;//correct
             ground.rotation.z = config.rotationZ;
             scene.add( ground );
         }
-        console.log(config.origX);console.log(config.origZ);console.log(config);
+        //console.log(config.origX);console.log(config.origZ);console.log(config);
+        // console.log(height);
         //physics
-        var transformQuat = new Ammo.btQuaternion();
-        transformQuat.setEuler(config.rotationX, config.rotationY, config.rotationZ);
-        var groundShape = new Ammo.btBoxShape(new Ammo.btVector3( config.height / 2, config.depth / 2, config.width / 2 ));
-        var groundTransform = new Ammo.btTransform();
-        groundTransform.setIdentity();
-        groundTransform.setOrigin(new Ammo.btVector3( config.origX, config.origY, config.origZ ));
-        groundTransform.setRotation(transformQuat);
-        
-        var groundMass = 0;
-        var localInertia = new Ammo.btVector3(0, 0, 0);
-        var motionState = new Ammo.btDefaultMotionState( groundTransform );
-        var rbInfo = new Ammo.btRigidBodyConstructionInfo( groundMass, motionState, groundShape, localInertia );
-        rbInfo.m_restitution = config.rest;
-        var groundAmmo = new Ammo.btRigidBody( rbInfo );
-        scene.world.addRigidBody( groundAmmo );
+        if (!config.meshOnly) {
+            var transformQuat = new Ammo.btQuaternion();
+            transformQuat.setEuler(config.rotationX, config.rotationY, config.rotationZ);
+            var groundShape = new Ammo.btBoxShape(new Ammo.btVector3( config.height / 2, config.depth / 2, config.width / 2 ));
+            var groundTransform = new Ammo.btTransform();
+            groundTransform.setIdentity();
+            groundTransform.setOrigin(new Ammo.btVector3( config.origX, config.origY, config.origZ ));
+            groundTransform.setRotation(transformQuat);
+            
+            var groundMass = 0;
+            var localInertia = new Ammo.btVector3(0, 0, 0);
+            var motionState = new Ammo.btDefaultMotionState( groundTransform );
+            var rbInfo = new Ammo.btRigidBodyConstructionInfo( groundMass, motionState, groundShape, localInertia );
+            rbInfo.m_restitution = config.rest;
+            var groundAmmo = new Ammo.btRigidBody( rbInfo );
+            scene.world.addRigidBody( groundAmmo );
 
-        return groundAmmo;
+            return groundAmmo;
+        }
     };
 
     initControls = function() {
@@ -304,17 +430,19 @@ var Module = { TOTAL_MEMORY: 100*1024*1024 };
         });
     };
 
-    var xLimitRight = -30, xOrigRight = 15, zOrig = 340,
-        xLimitLeft = -44, xOrigLeft = -100;
+    var xLimitRight = -30, xOrigRight = 15, zOrig = 345,
+        xLimitLeft = -44, xOrigLeft = -110;
 
     function createForce(left) {
         var distX, distY, vector,
             posX = ballAmmo.mesh.position.x,
             posZ = ballAmmo.mesh.position.z;
         if (left && checkZone(true)) {
-            vector = new Ammo.btVector3((zOrig - posZ) * ((xOrigLeft - posX) / 40) * 1000, 0, -100000 * (((posZ - zOrig) / 30) + .6) * (((xOrigLeft - posX) / 40) + .8));
+            // debugger;
+            vector = new Ammo.btVector3((zOrig - posZ) * ((xOrigLeft - posX) / 40) * 1000, 0, -100000 * (((posZ - zOrig) / 30) + .6) * (((posX - xOrigLeft) / 40) + .8));
             ballAmmo.applyCentralImpulse(vector);
         } else if (checkZone(false)) {
+            // debugger;
             vector = new Ammo.btVector3((zOrig - posZ) * ((xOrigRight - posX) / 40) * 1000, 0, -100000 * (((posZ - zOrig) / 30) + .6) * (((xOrigRight - posX) / 40) + .8));
             console.log(vector.getX());
             console.log(vector.getY());
@@ -326,22 +454,23 @@ var Module = { TOTAL_MEMORY: 100*1024*1024 };
     function checkZone(left) {
         var posX = ballAmmo.mesh.position.x,
             posZ = ballAmmo.mesh.position.z;
-        if (left && posX < xLimitLeft && posX < leftWiperX) {
+            debugger;
+        if (left && posX < xLimitLeft && posX > leftWiperX) {
             if (posZ > zOrig) {
-                debugger;
+                // debugger;
                 return posZ < zOrig + (posX - leftWiperX);
             } else {
-                debugger;
-                return posZ > zOrig - (posX - leftWiperX) * .5;
+                // debugger;
+                return posZ > zOrig - (posX - leftWiperX) * .8;
             }
             return ballAmmo.mesh.position.x
         } else if (posX < rightWiperX && posX > xLimitRight) {
             if (posZ > zOrig) {
-                debugger;
+                // debugger;
                 return posZ < zOrig + (rightWiperX - posX);
             } else {
-                debugger;
-                return posZ > zOrig - (rightWiperX - posX) * .5;
+                // debugger;
+                return posZ > zOrig - (rightWiperX - posX) * .8;
             }
         }
     }
@@ -351,25 +480,25 @@ var Module = { TOTAL_MEMORY: 100*1024*1024 };
             mass, startTransform, localInertia, boxShape, motionState, rbInfo;
 
         // Create 3D ball model
-        ball = new THREE.Mesh(
-            new THREE.SphereGeometry( size, size, size),
-            new THREE.MeshPhongMaterial({ color: 0xffffff, specular: 0x888888, map: THREE.ImageUtils.loadTexture(mapURL) })
-        );
+        if (mapURL) {
+            ball = new THREE.Mesh(
+                new THREE.SphereGeometry( size, size, size),
+                new THREE.MeshPhongMaterial({ color: 0xffffff, specular: 0x888888, map: THREE.ImageUtils.loadTexture(mapURL) })
+            );
 
-        ball.castShadow = true;
-        ball.receiveShadow = true;
-        ball.useQuaternion = useQuat;
-        ball.position.x = startX;
-        ball.position.y = startY;
-        ball.position.z = startZ;
-        ball.rotation.x = rotX;
-        ball.rotation.y = rotY;
-        ball.rotation.z = rotZ;
+            ball.castShadow = true;
+            ball.receiveShadow = true;
+            ball.useQuaternion = useQuat;
+            ball.position.x = startX;
+            ball.position.y = startY;
+            ball.position.z = startZ;
+            ball.rotation.x = rotX;
+            ball.rotation.y = rotY;
+            ball.rotation.z = rotZ;
 
-        scene.add( ball );
-        
-        new TWEEN.Tween(ball.material).to({opacity: 1}, 500).start();
-        
+            scene.add( ball );
+        }
+                
         // Create ball physics model
         startTransform = new Ammo.btTransform();
         startTransform.setIdentity();
@@ -508,7 +637,6 @@ var Module = { TOTAL_MEMORY: 100*1024*1024 };
             wiperAmmoRight.dummyMesh = dummyRight;
             scene.add(dummyRight);
 
-            TWEEN.start();
             requestAnimFrame(main);
         }
     }

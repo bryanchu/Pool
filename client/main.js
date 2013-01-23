@@ -16,8 +16,8 @@ var Module = { TOTAL_MEMORY: 100*1024*1024 };
     var projector, renderer, scene, light, camera, controls, wiperLeft, wiperRight, wiperShape, wiperTransform,
         initScene, render, main, updatePhysics, wiperAmmoLeft, wiperAmmoRight, wiperPos = 0, leftWiperAngle = 0, rightWiperAngle = 0,
         createBall, initControls, now, lastbox = 0, boxes = [], leftWiperPressed = false, rightWiperPressed = false,
-        fieldWidth = 550, fieldHeight = 875, wiperSpeed = .4, wiperLimit = .8, animMeshes = {}, waitingAJAXCalls, ballAmmo,
-        rightWiperX = 25, bothWiperY = 0, rightWiperZ = 360, leftWiperZ = 360, leftWiperX = -100, rightAmmoUp = false, leftAmmoUp = false,
+        fieldWidth = 550, fieldHeight = 875, wiperSpeed = .4, wiperLimit = .8, animMeshes = {}, waitingAJAXCalls, ballAmmo, leftBumper, rightBumper,
+        rightWiperX = 0, bothWiperY = 0, bothWiperZ= 377, leftWiperX = -85, rightAmmoUp = false, leftAmmoUp = false, wiperRotation = .6,
         leftForce = false, rightForce = false, leftHolding = false, rightHolding = false, firstSpace = true, defaultYRot = Math.PI / 2, defaultWallWidth = 100,
         COLORENUM = {Red: 0xFF0000,
                     Orange: 0xFF8600,
@@ -56,7 +56,7 @@ var Module = { TOTAL_MEMORY: 100*1024*1024 };
         scene.world.setGravity(new Ammo.btVector3(0, -42, 200));
 
         //flippers
-        var wiperWidth = 70, wiperHeight = 100, wiperRotation = .7;
+        var wiperWidth = 70, wiperHeight = 70;
         wiperAmmoRight= createWall({width: wiperWidth,
                                     height: wiperHeight,
                                     depth: 1,
@@ -66,7 +66,7 @@ var Module = { TOTAL_MEMORY: 100*1024*1024 };
                                     rotationZ: 0,
                                     origX: rightWiperX,
                                     origY: bothWiperY,
-                                    origZ: rightWiperZ,
+                                    origZ: bothWiperZ,
                                     rest: 1000});
         wiperAmmoLeft = createWall({width: wiperWidth,
                                     height: wiperHeight,
@@ -77,7 +77,7 @@ var Module = { TOTAL_MEMORY: 100*1024*1024 };
                                     rotationZ: 0,
                                     origX: leftWiperX,
                                     origY: bothWiperY,
-                                    origZ: leftWiperZ,
+                                    origZ: bothWiperZ,
                                     rest: 1000});
 
         //Make critical AJAX calls early
@@ -178,6 +178,7 @@ var Module = { TOTAL_MEMORY: 100*1024*1024 };
             scene.add(mesh);
             return mesh;
         }
+        var testColor = 0xaaaaaa;
         //TODO: fix ammo mesh rotation correlation.
         //Create the ground image.
         createWall({width: fieldWidth,
@@ -206,7 +207,7 @@ var Module = { TOTAL_MEMORY: 100*1024*1024 };
         createWall({width: defaultWallWidth,
                     height: 100,
                     depth: 1,
-                    img: null,
+                    img: testColor,
                     rotationX: 0,
                     rotationY: defaultYRot,
                     rotationZ: 0,
@@ -217,7 +218,7 @@ var Module = { TOTAL_MEMORY: 100*1024*1024 };
         createWall({width: defaultWallWidth,
                     height: 65,
                     depth: 1,
-                    img: null,
+                    img: testColor,
                     rotationX: Math.PI / 4,
                     rotationY: defaultYRot,
                     rotationZ: 0,
@@ -228,7 +229,7 @@ var Module = { TOTAL_MEMORY: 100*1024*1024 };
         createWall({width: defaultWallWidth,
                     height: 30,
                     depth: 1,
-                    img: null,
+                    img: testColor,
                     rotationX: Math.PI / 4,
                     rotationY: defaultYRot,
                     rotationZ: 0,
@@ -239,7 +240,7 @@ var Module = { TOTAL_MEMORY: 100*1024*1024 };
         createWall({width: defaultWallWidth,
                     height: 35,
                     depth: 1,
-                    img: null,
+                    img: testColor,
                     rotationX: Math.PI / 2,
                     rotationY: defaultYRot,
                     rotationZ: 0,
@@ -250,21 +251,200 @@ var Module = { TOTAL_MEMORY: 100*1024*1024 };
         createWall({width: defaultWallWidth,
                     height: 70,
                     depth: 1,
-                    img: null,
+                    img: testColor,
                     rotationX: -Math.PI / 4,
                     rotationY: defaultYRot,
                     rotationZ: 0,
                     origX: -110,
                     origY: 0,
                     origZ: -90});
-        //left vertical blue wall
+        //left-side left vertical blue wall
         createWall({width: defaultWallWidth,
-                    height: 100,
+                    height: 45,
                     depth: 1,
-                    img: null,
+                    img: testColor,
                     rotationX: Math.PI / 2,
                     rotationY: defaultYRot,
-                    rotationZ: 0})
+                    rotationZ: 0,
+                    origX: -85,
+                    origY: 0,
+                    origZ: -248});
+        //right-side left vertical blue wall
+        createWall({width: defaultWallWidth,
+                    height: 50,
+                    depth: 1,
+                    img: testColor,
+                    rotationX: Math.PI / 2,
+                    rotationY: defaultYRot,
+                    rotationZ: 0,
+                    origX: -70,
+                    origY: 0,
+                    origZ: -255});
+        //left-side right vertical blue wall
+        createWall({width: defaultWallWidth,
+                    height: 45,
+                    depth: 1,
+                    img: testColor,
+                    rotationX: Math.PI / 2,
+                    rotationY: defaultYRot,
+                    rotationZ: 0,
+                    origX: -25,
+                    origY: 0,
+                    origZ: -270});
+        //right-side right vertical blue wall
+        createWall({width: defaultWallWidth,
+                    height: 45,
+                    depth: 1,
+                    img: testColor,
+                    rotationX: Math.PI / 2,
+                    rotationY: defaultYRot,
+                    rotationZ: 0,
+                    origX: -5,
+                    origY: 0,
+                    origZ: -270});
+        //right orange sickle bottom surface
+        createWall({width: defaultWallWidth,
+                    height: 140,
+                    depth: 1,
+                    img: testColor,
+                    rotationX: -.9,
+                    rotationY: defaultYRot,
+                    rotationZ: 0,
+                    origX: 115,
+                    origY: 0,
+                    origZ: -255});
+        //left bellsprout wall
+        createWall({width: defaultWallWidth,
+                    height: 200,
+                    depth: 1,
+                    img: testColor,
+                    rotationX: -1.6,
+                    rotationY: defaultYRot,
+                    rotationZ: 0,
+                    origX: 40,
+                    origY: 0,
+                    origZ: -180});
+        //left bellsprout wall extension
+        createWall({width: defaultWallWidth,
+                    height: 50,
+                    depth: 1,
+                    img: testColor,
+                    rotationX: 1.4,
+                    rotationY: defaultYRot,
+                    rotationZ: 0,
+                    origX: 35,
+                    origY: 0,
+                    origZ: -58});
+        //bellsprout lowest wall
+        createWall({width: defaultWallWidth,
+                    height: 45,
+                    depth: 1,
+                    img: testColor,
+                    rotationX: -.8,
+                    rotationY: defaultYRot,
+                    rotationZ: 0,
+                    origX: 70,
+                    origY: 0,
+                    origZ: 35});
+        //bottom left vertical blue wall
+        createWall({width: defaultWallWidth,
+                    height: 70,
+                    depth: 1,
+                    img: testColor,
+                    rotationX: Math.PI / 2,
+                    rotationY: defaultYRot,
+                    rotationZ: 0,
+                    origX: -202,
+                    origY: 0,
+                    origZ: 255});
+        //bottom right vertical blue wall
+        createWall({width: defaultWallWidth,
+                    height: 70,
+                    depth: 1,
+                    img: testColor,
+                    rotationX: Math.PI / 2,
+                    rotationY: defaultYRot,
+                    rotationZ: 0,
+                    origX: 117,
+                    origY: 0,
+                    origZ: 255});
+        //bottom left slanted blue wall
+        createWall({width: defaultWallWidth,
+                    height: 110,
+                    depth: 1,
+                    img: testColor,
+                    rotationX: -3.75,
+                    rotationY: defaultYRot,
+                    rotationZ: 0,
+                    origX: -160,
+                    origY: 0,
+                    origZ: 325});
+        //bottom left slanted blue wall
+        createWall({width: defaultWallWidth,
+                    height: 110,
+                    depth: 1,
+                    img: testColor,
+                    rotationX: 3.75,
+                    rotationY: defaultYRot,
+                    rotationZ: 0,
+                    origX: 70,
+                    origY: 0,
+                    origZ: 325});
+        //left side left triangle
+        createWall({width: defaultWallWidth,
+                    height: 70,
+                    depth: 1,
+                    img: testColor,
+                    rotationX: Math.PI / 2,
+                    rotationY: defaultYRot,
+                    rotationZ: 0,
+                    origX: -165,
+                    origY: 0,
+                    origZ: 245});
+        //right side right triangle
+        createWall({width: defaultWallWidth,
+                    height: 70,
+                    depth: 1,
+                    img: testColor,
+                    rotationX: Math.PI / 2,
+                    rotationY: defaultYRot,
+                    rotationZ: 0,
+                    origX: 85,
+                    origY: 0,
+                    origZ: 245});
+        //bouncy wall left triangle
+        leftBumper = createWall({width: defaultWallWidth,
+                    height: 90,
+                    depth: 1,
+                    img: testColor,
+                    rotationX: -1.2,
+                    rotationY: defaultYRot,
+                    rotationZ: 0,
+                    origX: -145,
+                    origY: 0,
+                    origZ: 255});
+        //bouncy wall right triangle
+        rightBumper = createWall({width: defaultWallWidth,
+                    height: 90,
+                    depth: 1,
+                    img: testColor,
+                    rotationX: 1.2,
+                    rotationY: defaultYRot,
+                    rotationZ: 0,
+                    origX: 65,
+                    origY: 0,
+                    origZ: 255});
+        //wall left of starting position
+        createWall({width: defaultWallWidth,
+                    height: 90,
+                    depth: 1,
+                    img: testColor,
+                    rotationX: Math.PI / 2,
+                    rotationY: defaultYRot,
+                    rotationZ: 0,
+                    origX: 185,
+                    origY: 0,
+                    origZ: 400});
         // top red semicircle
         createCurvedWall({
             reps: 25,
@@ -328,6 +508,15 @@ var Module = { TOTAL_MEMORY: 100*1024*1024 };
             centerZ: -150,
             radius: 70
         });
+        //top orange sickle
+        createCurvedWall({
+            reps: 12,
+            startAngle: -.6,
+            endAngle: .6,
+            centerX: -45,
+            centerZ: -130,
+            radius: 206
+        });
 
         initControls();
 
@@ -339,7 +528,7 @@ var Module = { TOTAL_MEMORY: 100*1024*1024 };
             });
         }
         var startX = 205;
-        ballAmmo = createBall(100, "img/pokeball.png", -160, 0, 70, 0, 0, 0, 13, true, 2);
+        ballAmmo = createBall(100, "img/pokeball.png", startX, 0, 100, 0, 0, 0, 13, true, 2);
     };
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     function createCurvedWall(config) {
@@ -351,7 +540,7 @@ var Module = { TOTAL_MEMORY: 100*1024*1024 };
             createWall({width: defaultWallWidth,
                         height: (config.endAngle - config.startAngle) / config.reps * config.radius,//500,
                         depth: 1,
-                        img: null,
+                        img: null,//0xaaaaaa,
                         rotationX: rotAngle,
                         rotationY: defaultYRot,
                         rotationZ: 0,
@@ -398,7 +587,7 @@ var Module = { TOTAL_MEMORY: 100*1024*1024 };
             rbInfo.m_restitution = config.rest;
             var groundAmmo = new Ammo.btRigidBody( rbInfo );
             scene.world.addRigidBody( groundAmmo );
-
+            groundAmmo.ground = ground;
             return groundAmmo;
         }
     };
@@ -410,10 +599,30 @@ var Module = { TOTAL_MEMORY: 100*1024*1024 };
                 leftWiperPressed = true;
                 leftForce = !leftHolding;
                 leftHolding = true;
+
+                setTimeout(function() {
+                    var wiperRotationQuat = new Ammo.btQuaternion();
+                    var wiperTransformChange = new Ammo.btTransform();
+                    wiperRotationQuat.setEuler(.1, Math.PI / 2, 0);
+                    wiperTransformChange.setRotation(wiperRotationQuat);
+                    wiperTransformChange.setOrigin(new Ammo.btVector3(leftWiperX, bothWiperY, bothWiperZ + 15));
+                    wiperAmmoLeft.setMotionState(new Ammo.btDefaultMotionState(wiperTransformChange));
+                }, 100);
+                
             } else if (e.keyCode == 39) {
                 rightWiperPressed = true;
                 rightForce = !rightHolding;
                 rightHolding = true;
+
+                setTimeout(function() {
+                    var wiperRotationQuat = new Ammo.btQuaternion();
+                    var wiperTransformChange = new Ammo.btTransform();
+                    wiperRotationQuat.setEuler(-.1, Math.PI / 2, 0);
+                    wiperTransformChange.setRotation(wiperRotationQuat);
+                    wiperTransformChange.setOrigin(new Ammo.btVector3(rightWiperX + 5, bothWiperY, bothWiperZ - 15));
+                    wiperAmmoRight.setMotionState(new Ammo.btDefaultMotionState(wiperTransformChange));
+                }, 100);
+                
             } else if (e.keyCode == 32 && firstSpace) {
                 firstSpace = false;
                 ballAmmo.applyCentralImpulse(new Ammo.btVector3(0, 0, -200000));
@@ -423,9 +632,30 @@ var Module = { TOTAL_MEMORY: 100*1024*1024 };
             if (e.keyCode == 37) {
                 leftWiperPressed = false;
                 leftHolding = false;
+
+                var wiperRotationQuat = new Ammo.btQuaternion();
+                var wiperTransformChange = new Ammo.btTransform();
+                wiperRotationQuat.setEuler(-wiperRotation, Math.PI / 2, 0);
+                wiperTransformChange.setRotation(wiperRotationQuat);
+                wiperTransformChange.setOrigin(new Ammo.btVector3(leftWiperX, bothWiperY, bothWiperZ));
+                wiperAmmoLeft.setMotionState(new Ammo.btDefaultMotionState(wiperTransformChange));
+
+                wiperAmmoLeft.ground.position.x = -wiperRotation;
+                wiperAmmoLeft.ground.position.y = Math.PI / 2;
+                wiperAmmoLeft.ground.position.z = 0;
+                wiperAmmoLeft.ground.rotation.x = bothWiperY - Math.PI / 2;//0
+                wiperAmmoLeft.ground.rotation.y = leftWiperX;//correct
+                wiperAmmoLeft.ground.rotation.z = bothWiperZ;
             } else if (e.keyCode == 39) {
                 rightWiperPressed = false;
                 rightHolding = false;
+
+                var wiperRotationQuat = new Ammo.btQuaternion();
+                var wiperTransformChange = new Ammo.btTransform();
+                wiperRotationQuat.setEuler(wiperRotation, Math.PI / 2, 0);
+                wiperTransformChange.setRotation(wiperRotationQuat);
+                wiperTransformChange.setOrigin(new Ammo.btVector3(rightWiperX, bothWiperY, bothWiperZ));
+                wiperAmmoRight.setMotionState(new Ammo.btDefaultMotionState(wiperTransformChange));
             }
         });
     };
@@ -438,39 +668,32 @@ var Module = { TOTAL_MEMORY: 100*1024*1024 };
             posX = ballAmmo.mesh.position.x,
             posZ = ballAmmo.mesh.position.z;
         if (left && checkZone(true)) {
-            // debugger;
             vector = new Ammo.btVector3((zOrig - posZ) * ((xOrigLeft - posX) / 40) * 1000, 0, -100000 * (((posZ - zOrig) / 30) + .6) * (((posX - xOrigLeft) / 40) + .8));
             ballAmmo.applyCentralImpulse(vector);
         } else if (checkZone(false)) {
-            // debugger;
             vector = new Ammo.btVector3((zOrig - posZ) * ((xOrigRight - posX) / 40) * 1000, 0, -100000 * (((posZ - zOrig) / 30) + .6) * (((xOrigRight - posX) / 40) + .8));
-            console.log(vector.getX());
-            console.log(vector.getY());
-            console.log(vector.getZ());
             ballAmmo.applyCentralImpulse(vector);
         }
     };
 
     function checkZone(left) {
         var posX = ballAmmo.mesh.position.x,
-            posZ = ballAmmo.mesh.position.z;
-            debugger;
-        if (left && posX < xLimitLeft && posX > leftWiperX) {
+            posZ = ballAmmo.mesh.position.z
+            leftFulcumX = -100,
+            rightFulcrumX = 25;
+            
+        if (left && posX < xLimitLeft && posX > leftFulcumX) {
             if (posZ > zOrig) {
-                // debugger;
-                return posZ < zOrig + (posX - leftWiperX);
+                return posZ < zOrig + (posX - leftFulcumX);
             } else {
-                // debugger;
-                return posZ > zOrig - (posX - leftWiperX) * .8;
+                return posZ > zOrig - (posX - leftFulcumX) * .8;
             }
             return ballAmmo.mesh.position.x
-        } else if (posX < rightWiperX && posX > xLimitRight) {
+        } else if (posX < rightFulcrumX && posX > xLimitRight) {
             if (posZ > zOrig) {
-                // debugger;
-                return posZ < zOrig + (rightWiperX - posX);
+                return posZ < zOrig + (rightFulcrumX - posX);
             } else {
-                // debugger;
-                return posZ > zOrig - (rightWiperX - posX) * .8;
+                return posZ > zOrig - (rightFulcrumX - posX) * .8;
             }
         }
     }
@@ -529,83 +752,30 @@ var Module = { TOTAL_MEMORY: 100*1024*1024 };
             rightForce = false;
         }
         var i, transform = new Ammo.btTransform(), origin, rotation;
-        
         ballAmmo.getMotionState().getWorldTransform( transform );
-        
         origin = transform.getOrigin();
 
         ballAmmo.mesh.position.x = origin.x();
         ballAmmo.mesh.position.y = origin.y();
         ballAmmo.mesh.position.z = origin.z();
-        // console.log(boxes[i].mesh.position);
         
         rotation = transform.getRotation();
-        // console.log(rotation.y());
         ballAmmo.mesh.quaternion.x = rotation.x();
         ballAmmo.mesh.quaternion.y = rotation.y();
         ballAmmo.mesh.quaternion.z = rotation.z();
         ballAmmo.mesh.quaternion.w = rotation.w();
         
         if (leftWiperPressed && leftWiperAngle < wiperLimit) {
- 
-
-            // var wiperMeshRotation = wiperTransformChange.getRotation();
-            // wiperAmmoLeft.mesh.quaternion.x = wiperMeshRotation.x();
-            // wiperAmmoLeft.mesh.quaternion.y = wiperMeshRotation.y();
-            // wiperAmmoLeft.mesh.quaternion.z = wiperMeshRotation.z();
-            // wiperAmmoLeft.mesh.quaternion.w = wiperMeshRotation.w();
             leftWiperAngle += wiperSpeed;
             wiperAmmoLeft.dummyMesh.rotation.y += wiperSpeed;
-
-            // origin = wiperTransformChange.getOrigin();
-            // wiperAmmoLeft.mesh.position.x = origin.x();
-            // wiperAmmoLeft.mesh.position.y = origin.y();
-            // wiperAmmoLeft.mesh.position.z = origin.z();
         } else if (!leftWiperPressed && leftWiperAngle > 0) {
-            // var wiperRotationQuat = new Ammo.btQuaternion();
-            // var wiperTransformChange = new Ammo.btTransform();
-
-            // wiperRotationQuat.setEuler(leftWiperAngle -= wiperSpeed, 0, 0);
-
-            // wiperTransformChange.setRotation(wiperRotationQuat);
-            // var offset = -1.7;
-            // var yshift = -1000 * (Math.sin(leftWiperAngle * Math.PI / 2 / 3.1 + offset) - Math.sin(offset));
-            // wiperTransformChange.setOrigin(new Ammo.btVector3(-400 * Math.sin(leftWiperAngle), 0, yshift));
-            // wiperAmmoLeft.setMotionState(new Ammo.btDefaultMotionState(wiperTransformChange));
             leftWiperAngle -= wiperSpeed;
             wiperAmmoLeft.dummyMesh.rotation.y -= wiperSpeed;
         }
-
         if (rightWiperPressed && rightWiperAngle < wiperLimit) {
-            
-            // // if (!rightAmmoUp) {
-            //     var wiperRotationQuat = new Ammo.btQuaternion();
-            //     var wiperTransformChange = new Ammo.btTransform();
-
-            //     wiperRotationQuat.setEuler(rightWiperAngle + .5, 0, 0);
-
-            //     wiperTransformChange.setRotation(wiperRotationQuat);
-            //     // var offset = 1.7;
-            //     // var yshift = 1000 * (Math.sin(leftWiperAngle * Math.PI / 2 / 3.1 + offset) - Math.sin(offset));
-            //     // wiperTransformChange.setOrigin(new Ammo.btVector3(-400 * Math.sin(rightWiperAngle), 0, yshift));
-            //     wiperTransformChange.setOrigin(new Ammo.btVector3(15, bothWiperY, bothWiperZ - 30));
-            //     wiperAmmoRight.setMotionState(new Ammo.btDefaultMotionState(wiperTransformChange));
-            //     rightAmmoUp = true;
-            // // }
             rightWiperAngle += wiperSpeed;
             wiperAmmoRight.dummyMesh.rotation.y -= wiperSpeed;
         } else if (!rightWiperPressed && rightWiperAngle > 0) {
-            // var wiperRotationQuat = new Ammo.btQuaternion();
-            // var wiperTransformChange = new Ammo.btTransform();
-
-            // wiperRotationQuat.setEuler(0, 0, 0);
-
-            // wiperTransformChange.setRotation(wiperRotationQuat);
-            // var offset = -1.7;
-            // var yshift = -1000 * (Math.sin(leftWiperAngle * Math.PI / 2 / 3.1 + offset) - Math.sin(offset));
-            // wiperTransformChange.setOrigin(new Ammo.btVector3(-400 * Math.sin(leftWiperAngle), 0, yshift));
-            // wiperAmmoLeft.setMotionState(new Ammo.btDefaultMotionState(wiperTransformChange));
-
             rightWiperAngle -= wiperSpeed;
             wiperAmmoRight.dummyMesh.rotation.y += wiperSpeed;
         }

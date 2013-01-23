@@ -178,7 +178,7 @@ var Module = { TOTAL_MEMORY: 100*1024*1024 };
             scene.add(mesh);
             return mesh;
         }
-        var testColor = 0xaaaaaa;
+        var testColor = null;
         //TODO: fix ammo mesh rotation correlation.
         //Create the ground image.
         createWall({width: fieldWidth,

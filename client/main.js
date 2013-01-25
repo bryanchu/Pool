@@ -11,11 +11,17 @@ window['requestAnimFrame'] = (function(){
 })();
 
 var Module = { TOTAL_MEMORY: 100*1024*1024 };
+Pinball = {};
+Pinball.Explosion = function() {
+    this.explode = function(config) {
+
+    };
+}();
 
 (function() {
-    var projector, renderer, scene, light, camera, controls, wiperLeft, wiperRight, wiperShape, wiperTransform,
+    var projector, renderer, scene, light, camera, controls, wiperLeft, wiperRight, wiperShape, wiperTransform, startX = 205, startZ = 330,
         initScene, render, main, updatePhysics, wiperAmmoLeft, wiperAmmoRight, wiperPos = 0, leftWiperAngle = 0, rightWiperAngle = 0,
-        createBall, initControls, now, lastbox = 0, boxes = [], leftWiperPressed = false, rightWiperPressed = false,
+        createBall, initControls, now, lastbox = 0, leftWiperPressed = false, rightWiperPressed = false, flipperSound = new Audio("sounds/flipper.mp3"), launchSound = new Audio("sounds/launch.mp3"), themeSound = new Audio("sounds/theme.mp3"),
         fieldWidth = 550, fieldHeight = 875, wiperSpeed = .4, wiperLimit = .8, animMeshes = {}, waitingAJAXCalls, ballAmmo, leftBumper, rightBumper,
         rightWiperX = 0, bothWiperY = 0, bothWiperZ= 377, leftWiperX = -85, rightAmmoUp = false, leftAmmoUp = false, wiperRotation = .6,
         leftForce = false, rightForce = false, leftHolding = false, rightHolding = false, firstSpace = true, defaultYRot = Math.PI / 2, defaultWallWidth = 100,
@@ -33,7 +39,15 @@ var Module = { TOTAL_MEMORY: 100*1024*1024 };
     initScene = function() {
         var collisionConfiguration, dispatcher, overlappingPairCache, solver, // Ammo world
             ground, groundShape, groundTransform, groundMass, localInertia, motionState, rbInfo, groundAmmo;
-        
+        //Check for Chrome bc firefox textures suck
+        (navigator.userAgent.toLowerCase().indexOf('chrome') < 0) && alert("Please use Chrome for optimal WebGL.");
+
+        themeSound.addEventListener('ended', function() {
+            this.currentTime = 0;
+            this.play();
+        }, false);
+        themeSound.play();
+
         // Projector
         projector = new THREE.Projector();
         
@@ -42,7 +56,7 @@ var Module = { TOTAL_MEMORY: 100*1024*1024 };
         renderer.shadowMapEnabled = true;
         renderer.shadowMapSoft = true;
         renderer.setSize( window.innerWidth, window.innerHeight );
-        document.getElementById( 'container' ).appendChild( renderer.domElement );
+       document.getElementById( 'container' ).appendChild( renderer.domElement );
         
         // Scene
         scene = new THREE.Scene();
@@ -79,7 +93,6 @@ var Module = { TOTAL_MEMORY: 100*1024*1024 };
                                     origY: bothWiperY,
                                     origZ: bothWiperZ,
                                     rest: 1000});
-
         //Make critical AJAX calls early
         var baseURL = "meshes/";
         var loader = new THREE.JSONLoader();
@@ -181,13 +194,13 @@ var Module = { TOTAL_MEMORY: 100*1024*1024 };
         var testColor = null;
         //TODO: fix ammo mesh rotation correlation.
         //Create the ground image.
-        createWall({width: fieldWidth,
-                    height: fieldHeight,
+        createWall({width: fieldHeight,
+                    height: fieldWidth,
                     depth: 2,
-                    img: THREE.ImageUtils.loadTexture("/img/DottedCross.jpg"),//null,//THREE.ImageUtils.loadTexture("/img/background.png"),
+                    img: THREE.ImageUtils.loadTexture("img/abstractExplosion.jpg"),//"/img/gradientTest.jpg"),//"/img/background.png"),//THREE.ImageUtils.loadTexture("/img/DottedCross.jpg"),//null,//
                     rotationX: 0, 
                     rotationY: 0,
-                    rotationZ: Math.PI / 2,
+                    rotationZ: 0,
                     origX: 0,
                     origY: -20,
                     origZ: 0,
@@ -527,8 +540,9 @@ var Module = { TOTAL_MEMORY: 100*1024*1024 };
                 initAnim();
             });
         }
-        var startX = 205;
-        ballAmmo = createBall(100, "img/pokeball.png", startX, 0, 100, 0, 0, 0, 13, true, 2);
+        
+        ballAmmo = createPokeball();
+        ballAmmo.setSleepingThresholds(0, 0);
     };
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     function createCurvedWall(config) {
@@ -594,37 +608,41 @@ var Module = { TOTAL_MEMORY: 100*1024*1024 };
 
     initControls = function() {
         document.addEventListener('keydown', function(e) {
-            console.log(leftForce);
             if (e.keyCode == 37) {
+                !leftHolding && flipperSound.play();
+                setTimeout(function() {
+                    if (leftHolding) {
+                        var wiperRotationQuat = new Ammo.btQuaternion();
+                        var wiperTransformChange = new Ammo.btTransform();
+                        wiperRotationQuat.setEuler(.1, Math.PI / 2, 0);
+                        wiperTransformChange.setRotation(wiperRotationQuat);
+                        wiperTransformChange.setOrigin(new Ammo.btVector3(leftWiperX + 5, bothWiperY, bothWiperZ - 15));
+                        wiperAmmoLeft.setMotionState(new Ammo.btDefaultMotionState(wiperTransformChange));
+                    }
+                }, 100);
+
                 leftWiperPressed = true;
                 leftForce = !leftHolding;
                 leftHolding = true;
-
-                setTimeout(function() {
-                    var wiperRotationQuat = new Ammo.btQuaternion();
-                    var wiperTransformChange = new Ammo.btTransform();
-                    wiperRotationQuat.setEuler(.1, Math.PI / 2, 0);
-                    wiperTransformChange.setRotation(wiperRotationQuat);
-                    wiperTransformChange.setOrigin(new Ammo.btVector3(leftWiperX, bothWiperY, bothWiperZ + 15));
-                    wiperAmmoLeft.setMotionState(new Ammo.btDefaultMotionState(wiperTransformChange));
-                }, 100);
-                
             } else if (e.keyCode == 39) {
+                !rightHolding && flipperSound.play();
+                setTimeout(function() {
+                    if (rightHolding) {
+                        var wiperRotationQuat = new Ammo.btQuaternion();
+                        var wiperTransformChange = new Ammo.btTransform();
+                        wiperRotationQuat.setEuler(-.1, Math.PI / 2, 0);
+                        wiperTransformChange.setRotation(wiperRotationQuat);
+                        wiperTransformChange.setOrigin(new Ammo.btVector3(rightWiperX + 5, bothWiperY, bothWiperZ - 15));
+                        wiperAmmoRight.setMotionState(new Ammo.btDefaultMotionState(wiperTransformChange));
+                    }
+                }, 100);
+
                 rightWiperPressed = true;
                 rightForce = !rightHolding;
                 rightHolding = true;
-
-                setTimeout(function() {
-                    var wiperRotationQuat = new Ammo.btQuaternion();
-                    var wiperTransformChange = new Ammo.btTransform();
-                    wiperRotationQuat.setEuler(-.1, Math.PI / 2, 0);
-                    wiperTransformChange.setRotation(wiperRotationQuat);
-                    wiperTransformChange.setOrigin(new Ammo.btVector3(rightWiperX + 5, bothWiperY, bothWiperZ - 15));
-                    wiperAmmoRight.setMotionState(new Ammo.btDefaultMotionState(wiperTransformChange));
-                }, 100);
-                
             } else if (e.keyCode == 32 && firstSpace) {
-                firstSpace = false;
+                launchSound.play();
+                // firstSpace = false;
                 ballAmmo.applyCentralImpulse(new Ammo.btVector3(0, 0, -200000));
             }
         });
@@ -639,13 +657,6 @@ var Module = { TOTAL_MEMORY: 100*1024*1024 };
                 wiperTransformChange.setRotation(wiperRotationQuat);
                 wiperTransformChange.setOrigin(new Ammo.btVector3(leftWiperX, bothWiperY, bothWiperZ));
                 wiperAmmoLeft.setMotionState(new Ammo.btDefaultMotionState(wiperTransformChange));
-
-                wiperAmmoLeft.ground.position.x = -wiperRotation;
-                wiperAmmoLeft.ground.position.y = Math.PI / 2;
-                wiperAmmoLeft.ground.position.z = 0;
-                wiperAmmoLeft.ground.rotation.x = bothWiperY - Math.PI / 2;//0
-                wiperAmmoLeft.ground.rotation.y = leftWiperX;//correct
-                wiperAmmoLeft.ground.rotation.z = bothWiperZ;
             } else if (e.keyCode == 39) {
                 rightWiperPressed = false;
                 rightHolding = false;
@@ -661,7 +672,7 @@ var Module = { TOTAL_MEMORY: 100*1024*1024 };
     };
 
     var xLimitRight = -30, xOrigRight = 15, zOrig = 345,
-        xLimitLeft = -44, xOrigLeft = -110;
+        xLimitLeft = -50, xOrigLeft = -110;
 
     function createForce(left) {
         var distX, distY, vector,
@@ -679,14 +690,14 @@ var Module = { TOTAL_MEMORY: 100*1024*1024 };
     function checkZone(left) {
         var posX = ballAmmo.mesh.position.x,
             posZ = ballAmmo.mesh.position.z
-            leftFulcumX = -100,
+            leftFulcrumX = -110,
             rightFulcrumX = 25;
             
-        if (left && posX < xLimitLeft && posX > leftFulcumX) {
+        if (left && posX < xLimitLeft && posX > leftFulcrumX) {
             if (posZ > zOrig) {
-                return posZ < zOrig + (posX - leftFulcumX);
+                return posZ < zOrig + (posX - leftFulcrumX);
             } else {
-                return posZ > zOrig - (posX - leftFulcumX) * .8;
+                return posZ > zOrig - (posX - leftFulcrumX) * .8;
             }
             return ballAmmo.mesh.position.x
         } else if (posX < rightFulcrumX && posX > xLimitRight) {
@@ -696,6 +707,10 @@ var Module = { TOTAL_MEMORY: 100*1024*1024 };
                 return posZ > zOrig - (rightFulcrumX - posX) * .8;
             }
         }
+    }
+
+    createPokeball = function() {
+        return createBall(100, "img/pokeball.png", startX, 0, 330, 0, 0, 0, 13, true, 2);
     }
     
     createBall = function(mass, mapURL, startX, startY, startZ, rotX, rotY, rotZ, size, useQuat, rest) {
@@ -743,7 +758,8 @@ var Module = { TOTAL_MEMORY: 100*1024*1024 };
     };
     
     updatePhysics = function() {
-        scene.world.stepSimulation( 1 / 60, 5 );
+        var transform = new Ammo.btTransform(), origin, rotation;
+        scene.world.stepSimulation( 1 / 60, 5 );            
         if (leftForce) {
             createForce(true);
             leftForce = false;
@@ -751,10 +767,13 @@ var Module = { TOTAL_MEMORY: 100*1024*1024 };
             createForce(false);
             rightForce = false;
         }
-        var i, transform = new Ammo.btTransform(), origin, rotation;
-        ballAmmo.getMotionState().getWorldTransform( transform );
+        
+        ballAmmo.getMotionState().getWorldTransform(transform);
+        if (transform.getOrigin().z() > fieldHeight) {
+            ballAmmo = createPokeball();
+            firstSpace = true;
+        }
         origin = transform.getOrigin();
-
         ballAmmo.mesh.position.x = origin.x();
         ballAmmo.mesh.position.y = origin.y();
         ballAmmo.mesh.position.z = origin.z();
@@ -764,7 +783,7 @@ var Module = { TOTAL_MEMORY: 100*1024*1024 };
         ballAmmo.mesh.quaternion.y = rotation.y();
         ballAmmo.mesh.quaternion.z = rotation.z();
         ballAmmo.mesh.quaternion.w = rotation.w();
-        
+        //rotate the flippers (meshes only)
         if (leftWiperPressed && leftWiperAngle < wiperLimit) {
             leftWiperAngle += wiperSpeed;
             wiperAmmoLeft.dummyMesh.rotation.y += wiperSpeed;
@@ -810,30 +829,12 @@ var Module = { TOTAL_MEMORY: 100*1024*1024 };
             requestAnimFrame(main);
         }
     }
-
-    // function rotateAroundWorldAxis(object, axis, radians) {
-    //     arotWorldMatrix = new THREE.Matrix4();
-    //     rotWorldMatrix.makeRotationAxis(axis.normalize(), radians);
-    //     rotWorldMatrix.multiplySelf(object.matrix);        // pre-multiply
-    //     object.matrix = rotWorldMatrix;
-
-    //     object.rotation.setEulerFromRotationMatrix(object.matrix);
-    // }
     
     render = function render() {
         renderer.render(scene, camera);
     };
     
     main = function main() {
-        
-        // //Create a new box every second
-        // now = new Date().getTime();
-        // if ( now - lastbox > 2000 && boxes.length < 20) {
-        
-        //     lastbox = now;
-        // }
-        
-        // Run physics
         updatePhysics();
         controls.update();
         render();

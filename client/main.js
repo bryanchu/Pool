@@ -1,4 +1,8 @@
 //Bryan Chu | Pokemon Pinball in WEBGL
+//TODO: finish refactoring everything
+//      moving background
+//      color changing
+//      voltorb bouncing
 window['requestAnimFrame'] = (function(){
   return  window.requestAnimationFrame       || 
           window.webkitRequestAnimationFrame || 
@@ -10,35 +14,74 @@ window['requestAnimFrame'] = (function(){
           };
 })();
 
+function extend(destination, source) {
+    for (var property in source)
+      destination[property] = source[property];
+    return destination;
+}
+
 var Module = { TOTAL_MEMORY: 100*1024*1024 };
 Pinball = {};
-Pinball.Explosion = function() {
-    this.explode = function(config) {
+//SINGLETONS
+Pinball.GlobalControl = function() {
 
-    };
 }();
+Pinball.ScoreManager = function() {
 
+}();
+Pinball.AudioManager = function() {
+
+}();
+Pinball.Pinball = function() {
+
+}();
+//NON-SINGLETONS
+Pinball.AmmoThreeObject = function(config) {
+
+};
+Pinball.Wall = function(config) {
+
+};
+Pinball.CurvedWall = function(config) {
+
+};
+Pinball.Ball = function(config) {
+
+};
 (function() {
     var projector, renderer, scene, light, camera, controls, wiperLeft, wiperRight, wiperShape, wiperTransform, startX = 205, startZ = 330,
         initScene, render, main, updatePhysics, wiperAmmoLeft, wiperAmmoRight, wiperPos = 0, leftWiperAngle = 0, rightWiperAngle = 0,
-        createBall, initControls, now, lastbox = 0, leftWiperPressed = false, rightWiperPressed = false, flipperSound = new Audio("sounds/flipper.mp3"), launchSound = new Audio("sounds/launch.mp3"), themeSound = new Audio("sounds/theme.mp3"),
+        createBall, initControls, now, lastbox = 0, leftWiperPressed = false, rightWiperPressed = false, flipperSound = new Audio("sounds/flipper.mp3"), launchSound = new Audio("sounds/launch.mp3"), themeSound = new Audio("sounds/theme.mp3"), bounceSound = new Audio("sounds/boing.mp3"),
         fieldWidth = 550, fieldHeight = 875, wiperSpeed = .4, wiperLimit = .8, animMeshes = {}, waitingAJAXCalls, ballAmmo, leftBumper, rightBumper,
         rightWiperX = 0, bothWiperY = 0, bothWiperZ= 377, leftWiperX = -85, rightAmmoUp = false, leftAmmoUp = false, wiperRotation = .6,
         leftForce = false, rightForce = false, leftHolding = false, rightHolding = false, firstSpace = true, defaultYRot = Math.PI / 2, defaultWallWidth = 100,
         COLORENUM = {Red: 0xFF0000,
+                    RedHighlight: 0xFF5252,
                     Orange: 0xFF8600,
                     Blue: 0x1F7CFF,
+                    BlueHighlight: 0x6EAAFF,
                     Brown: 0x8B2500,
                     Gold: 0xFFB90F,
                     Pink: 0xFF52CB,
                     Black: 0x000000,
                     White: 0xFFFFFF,
                     Yellow: 0xFAFF6B,
-                    Green: 0x00DE1A};
-    
+                    Green: 0x00DE1A},
+        BOUNCYOBJECTS = {},
+        BOUNCYPOINTERS = {};
+        // BOUNCYPOINTERS = {leftBumper: null,
+        //                  rightBumper: null,
+        //                  topVoltorb: null,
+        //                  leftVoltorb: null,
+        //                  rightVoltorb: null,
+        //                  leftDiglet: null,
+        //                  rightDiglet: null
+        //                  };
+    var testColor = null;
     initScene = function() {
         var collisionConfiguration, dispatcher, overlappingPairCache, solver, // Ammo world
             ground, groundShape, groundTransform, groundMass, localInertia, motionState, rbInfo, groundAmmo;
+        var score = document.getElementById('score');
         //Check for Chrome bc firefox textures suck
         (navigator.userAgent.toLowerCase().indexOf('chrome') < 0) && alert("Please use Chrome for optimal WebGL.");
 
@@ -56,7 +99,7 @@ Pinball.Explosion = function() {
         renderer.shadowMapEnabled = true;
         renderer.shadowMapSoft = true;
         renderer.setSize( window.innerWidth, window.innerHeight );
-       document.getElementById( 'container' ).appendChild( renderer.domElement );
+        document.getElementById( 'container' ).appendChild( renderer.domElement );
         
         // Scene
         scene = new THREE.Scene();
@@ -93,6 +136,9 @@ Pinball.Explosion = function() {
                                     origY: bothWiperY,
                                     origZ: bothWiperZ,
                                     rest: 1000});
+        //the ball
+        ballAmmo = createPokeball();
+
         //Make critical AJAX calls early
         var baseURL = "meshes/";
         var loader = new THREE.JSONLoader();
@@ -191,7 +237,7 @@ Pinball.Explosion = function() {
             scene.add(mesh);
             return mesh;
         }
-        var testColor = null;
+
         //TODO: fix ammo mesh rotation correlation.
         //Create the ground image.
         createWall({width: fieldHeight,
@@ -426,7 +472,7 @@ Pinball.Explosion = function() {
                     origY: 0,
                     origZ: 245});
         //bouncy wall left triangle
-        leftBumper = createWall({width: defaultWallWidth,
+        createWall({width: defaultWallWidth,
                     height: 90,
                     depth: 1,
                     img: testColor,
@@ -435,9 +481,10 @@ Pinball.Explosion = function() {
                     rotationZ: 0,
                     origX: -145,
                     origY: 0,
-                    origZ: 255});
+                    origZ: 255,
+                    id: "leftBumper"});
         //bouncy wall right triangle
-        rightBumper = createWall({width: defaultWallWidth,
+        createWall({width: defaultWallWidth,
                     height: 90,
                     depth: 1,
                     img: testColor,
@@ -446,7 +493,8 @@ Pinball.Explosion = function() {
                     rotationZ: 0,
                     origX: 65,
                     origY: 0,
-                    origZ: 255});
+                    origZ: 255,
+                    id: "rightBumper"});
         //wall left of starting position
         createWall({width: defaultWallWidth,
                     height: 90,
@@ -458,6 +506,28 @@ Pinball.Explosion = function() {
                     origX: 185,
                     origY: 0,
                     origZ: 400});
+        //left bottom wall
+        createWall({width: defaultWallWidth,
+                    height: 200,
+                    depth: 1,
+                    img: testColor,
+                    rotationX: Math.PI / 2,
+                    rotationY: defaultYRot,
+                    rotationZ: 0,
+                    origX: -258,
+                    origY: 0,
+                    origZ: 300});
+        //right bottom wall
+        createWall({width: defaultWallWidth,
+                    height: 200,
+                    depth: 1,
+                    img: testColor,
+                    rotationX: Math.PI / 2,
+                    rotationY: defaultYRot,
+                    rotationZ: 0,
+                    origX: 165,
+                    origY: 0,
+                    origZ: 300});
         // top red semicircle
         createCurvedWall({
             reps: 25,
@@ -530,6 +600,24 @@ Pinball.Explosion = function() {
             centerZ: -130,
             radius: 206
         });
+        //left lower wall
+        createCurvedWall({
+            reps: 10,
+            startAngle: .3,
+            endAngle: Math.PI / 2,
+            centerX: -200,
+            centerZ: 220,
+            radius: 50
+        });
+        //right lower wall
+        createCurvedWall({
+            reps: 10,
+            startAngle: -.3,
+            endAngle: -Math.PI / 2,
+            centerX: 108,
+            centerZ: 220,
+            radius: 50
+        });
 
         initControls();
 
@@ -540,9 +628,7 @@ Pinball.Explosion = function() {
                 initAnim();
             });
         }
-        
-        ballAmmo = createPokeball();
-        ballAmmo.setSleepingThresholds(0, 0);
+
     };
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     function createCurvedWall(config) {
@@ -554,7 +640,7 @@ Pinball.Explosion = function() {
             createWall({width: defaultWallWidth,
                         height: (config.endAngle - config.startAngle) / config.reps * config.radius,//500,
                         depth: 1,
-                        img: null,//0xaaaaaa,
+                        img: testColor,
                         rotationX: rotAngle,
                         rotationY: defaultYRot,
                         rotationZ: 0,
@@ -601,7 +687,12 @@ Pinball.Explosion = function() {
             rbInfo.m_restitution = config.rest;
             var groundAmmo = new Ammo.btRigidBody( rbInfo );
             scene.world.addRigidBody( groundAmmo );
-            groundAmmo.ground = ground;
+            //bounciness check
+            if (config.id) {
+                BOUNCYPOINTERS[groundAmmo.a] = groundAmmo;
+            }
+            // console.log(groundAmmo.a);
+            groundAmmo.id = config.id;
             return groundAmmo;
         }
     };
@@ -675,6 +766,7 @@ Pinball.Explosion = function() {
         xLimitLeft = -50, xOrigLeft = -110;
 
     function createForce(left) {
+        score.innerHTML = parseInt(score.innerHTML) + 200;
         var distX, distY, vector,
             posX = ballAmmo.mesh.position.x,
             posZ = ballAmmo.mesh.position.z;
@@ -685,6 +777,23 @@ Pinball.Explosion = function() {
             vector = new Ammo.btVector3((zOrig - posZ) * ((xOrigRight - posX) / 40) * 1000, 0, -100000 * (((posZ - zOrig) / 30) + .6) * (((xOrigRight - posX) / 40) + .8));
             ballAmmo.applyCentralImpulse(vector);
         }
+    };
+
+    function bounce(object) {
+        var vector;
+        score.innerHTML = parseInt(score.innerHTML) + 150;
+        bounceSound.play();
+        switch (object.id) {
+            case "leftBumper":
+                vector = new Ammo.btVector3(30000, 0, -30000);
+                break;
+            case "rightBumper":
+                vector = new Ammo.btVector3(-30000, 0, -30000);
+                break;
+            default:
+                console.log("Bad things.")
+        }
+        ballAmmo.applyCentralImpulse(vector);
     };
 
     function checkZone(left) {
@@ -710,7 +819,9 @@ Pinball.Explosion = function() {
     }
 
     createPokeball = function() {
-        return createBall(100, "img/pokeball.png", startX, 0, 330, 0, 0, 0, 13, true, 2);
+        var ball = createBall(100, "img/pokeball.png", -130, 0, 130, 0, 0, 0, 13, true, 2);
+        ball.setSleepingThresholds(0, 0);
+        return ball;
     }
     
     createBall = function(mass, mapURL, startX, startY, startZ, rotX, rotY, rotZ, size, useQuat, rest) {
@@ -759,7 +870,20 @@ Pinball.Explosion = function() {
     
     updatePhysics = function() {
         var transform = new Ammo.btTransform(), origin, rotation;
-        scene.world.stepSimulation( 1 / 60, 5 );            
+        scene.world.stepSimulation( 1 / 60, 5 );
+        var numManifolds = scene.world.getDispatcher().getNumManifolds();
+        for (var i = 0; i < numManifolds; i++) {
+            var contactManifold = scene.world.getDispatcher().getManifoldByIndexInternal(i);
+            var obA = contactManifold.getBody0();
+            var obB = contactManifold.getBody1();
+            var obCollision = BOUNCYPOINTERS[obA] || BOUNCYPOINTERS[obB];
+            if (obCollision) {
+                if (contactManifold.getContactPoint(0).getDistance() < 1) {
+                    bounce(obCollision);
+                }
+            }
+        }
+        // console.log("-----------");
         if (leftForce) {
             createForce(true);
             leftForce = false;
@@ -770,6 +894,7 @@ Pinball.Explosion = function() {
         
         ballAmmo.getMotionState().getWorldTransform(transform);
         if (transform.getOrigin().z() > fieldHeight) {
+            Ammo.destroy(ballAmmo);
             ballAmmo = createPokeball();
             firstSpace = true;
         }

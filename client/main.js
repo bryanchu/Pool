@@ -900,9 +900,9 @@ PB.Pinball = function() {//There can only be one
     var ball = new PB.Ball({
         mass: 100,
         mapURL: "img/pokeball.png",
-        origX: -50,
+        origX: startX,
         origY: 0,
-        origZ: startZ - 200,
+        origZ: startZ,
         rotationX: 0,
         rotationY: 0,
         rotationZ: 0,

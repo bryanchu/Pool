@@ -103,6 +103,7 @@ Pinball.Ball = function(config) {
         
         // Scene
         scene = new THREE.Scene();
+        sceneCube = new THREE.Scene();
 
         // Ammo world
         collisionConfiguration = new Ammo.btDefaultCollisionConfiguration();
@@ -198,7 +199,7 @@ Pinball.Ball = function(config) {
             70,
             window.innerWidth / window.innerHeight,
             1,
-            5000
+            50000
         );
         camera.position.set( 0, 800, 300 );
         camera.lookAt( scene.position );
@@ -629,6 +630,28 @@ Pinball.Ball = function(config) {
             });
         }
 
+        var urls = [
+          'img/grey.png',
+          'img/grey.png',
+          'img/grey.png',
+          'img/grey.png',
+          'img/grey.png',
+          'img/grey.png'
+        ],
+        cubeMap = THREE.ImageUtils.loadTextureCube(urls);
+        cubeMap.format = THREE.RGBFormat;
+        var material = new THREE.MeshBasicMaterial({
+            color: 0xFFFFFF,
+            envMap: cubeMap,
+            side: THREE.BackSide
+        });
+
+        var shader = THREE.ShaderUtils.lib[ "cube" ];
+        shader.uniforms[ "tCube" ].texture = cubeMap;
+
+        var skybox = new THREE.Mesh( new THREE.CubeGeometry( 10000, 10000, 10000 ), material );
+    
+        scene.add(skybox);
     };
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     function createCurvedWall(config) {
@@ -819,7 +842,7 @@ Pinball.Ball = function(config) {
     }
 
     createPokeball = function() {
-        var ball = createBall(100, "img/pokeball.png", -130, 0, 130, 0, 0, 0, 13, true, 2);
+        var ball = createBall(100, "img/pokeball.png", startX, 0, 130, 0, 0, 0, 13, true, 2);
         ball.setSleepingThresholds(0, 0);
         return ball;
     }
@@ -895,6 +918,7 @@ Pinball.Ball = function(config) {
         ballAmmo.getMotionState().getWorldTransform(transform);
         if (transform.getOrigin().z() > fieldHeight) {
             Ammo.destroy(ballAmmo);
+            scene.remove(ballAmmo.mesh);
             ballAmmo = createPokeball();
             firstSpace = true;
         }
@@ -957,6 +981,7 @@ Pinball.Ball = function(config) {
     
     render = function render() {
         renderer.render(scene, camera);
+        // renderer.render(sceneCube, camera);
     };
     
     main = function main() {

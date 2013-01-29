@@ -842,7 +842,7 @@ PB.Wall = function(config) {
     return self;
 };
 PB.Wall.prototype = PB.AmmoThreeObject.prototype;
-PB.Wall.testColor = 0xaaaaaa;
+PB.Wall.testColor = null;
 PB.CurvedWall = function(config) {
     var rotAngle;
     for (var i = 0; i < config.reps; i++) {

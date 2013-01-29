@@ -1,6 +1,5 @@
 //Bryan Chu | Pokemon Pinball in WEBGL
 //TODO: finish refactoring everything
-//      moving background
 //      color changing
 //      voltorb bouncing
 window['requestAnimFrame'] = (function(){
@@ -14,47 +13,16 @@ window['requestAnimFrame'] = (function(){
           };
 })();
 
-function extend(destination, source) {
-    for (var property in source)
-      destination[property] = source[property];
-    return destination;
-}
-
 var Module = { TOTAL_MEMORY: 100*1024*1024 };
-Pinball = {};
+PB = {};
 //SINGLETONS
-Pinball.GlobalControl = function() {
-
-}();
-Pinball.ScoreManager = function() {
-
-}();
-Pinball.AudioManager = function() {
-
-}();
-Pinball.Pinball = function() {
-
-}();
-//NON-SINGLETONS
-Pinball.AmmoThreeObject = function(config) {
-
-};
-Pinball.Wall = function(config) {
-
-};
-Pinball.CurvedWall = function(config) {
-
-};
-Pinball.Ball = function(config) {
-
-};
-(function() {
-    var projector, renderer, scene, light, camera, controls, wiperLeft, wiperRight, wiperShape, wiperTransform, startX = 205, startZ = 330,
-        initScene, render, main, updatePhysics, wiperAmmoLeft, wiperAmmoRight, wiperPos = 0, leftWiperAngle = 0, rightWiperAngle = 0,
-        createBall, initControls, now, lastbox = 0, leftWiperPressed = false, rightWiperPressed = false, flipperSound = new Audio("sounds/flipper.mp3"), launchSound = new Audio("sounds/launch.mp3"), themeSound = new Audio("sounds/theme.mp3"), bounceSound = new Audio("sounds/boing.mp3"),
-        fieldWidth = 550, fieldHeight = 875, wiperSpeed = .4, wiperLimit = .8, animMeshes = {}, waitingAJAXCalls, ballAmmo, leftBumper, rightBumper,
-        rightWiperX = 0, bothWiperY = 0, bothWiperZ= 377, leftWiperX = -85, rightAmmoUp = false, leftAmmoUp = false, wiperRotation = .6,
-        leftForce = false, rightForce = false, leftHolding = false, rightHolding = false, firstSpace = true, defaultYRot = Math.PI / 2, defaultWallWidth = 100,
+PB.GlobalControl = function() {
+    var collisionConfiguration, dispatcher, overlappingPairCache, solver, ground, groundShape, groundTransform, groundMass, localInertia, motionState, rbInfo, groundAmmo,//Ammo private variables
+        renderer, light, camera, controls, wiperTransform, wiperLeft, wiperRight,//mesh private variables
+        waitingAJAXCalls,//miscellaneous private variables
+        leftWiperAngle = 0, rightWiperAngle = 0, fieldWidth = 550, fieldHeight = 875, wiperSpeed = .4, wiperLimit = .8, rightWiperX = 0, bothWiperY = 0, bothWiperZ= 377, leftWiperX = -85, wiperRotation = .6,
+        leftWiperPressed = false, rightWiperPressed = false, leftForce = false, rightForce = false, leftHolding = false, rightHolding = false, firstSpace = true,
+        animMeshes = {},
         COLORENUM = {Red: 0xFF0000,
                     RedHighlight: 0xFF5252,
                     Orange: 0xFF8600,
@@ -66,33 +34,20 @@ Pinball.Ball = function(config) {
                     Black: 0x000000,
                     White: 0xFFFFFF,
                     Yellow: 0xFAFF6B,
-                    Green: 0x00DE1A},
-        BOUNCYOBJECTS = {},
-        BOUNCYPOINTERS = {};
-        // BOUNCYPOINTERS = {leftBumper: null,
-        //                  rightBumper: null,
-        //                  topVoltorb: null,
-        //                  leftVoltorb: null,
-        //                  rightVoltorb: null,
-        //                  leftDiglet: null,
-        //                  rightDiglet: null
-        //                  };
-    var testColor = null;
-    initScene = function() {
-        var collisionConfiguration, dispatcher, overlappingPairCache, solver, // Ammo world
-            ground, groundShape, groundTransform, groundMass, localInertia, motionState, rbInfo, groundAmmo;
-        var score = document.getElementById('score');
-        //Check for Chrome bc firefox textures suck
+                    Green: 0x00DE1A};
+    var self = {};
+    self.BOUNCYPOINTERS = {};
+    self.BOUNCYOBJECTS = {};
+    self.initScene = function() {
+        PB.ScoreManager.scoreEl = document.getElementById('score');
+        //Check for Chrome bc firefox textures are bad
         (navigator.userAgent.toLowerCase().indexOf('chrome') < 0) && alert("Please use Chrome for optimal WebGL.");
 
-        themeSound.addEventListener('ended', function() {
+        PB.AudioManager.sounds.themeSound.addEventListener('ended', function() {
             this.currentTime = 0;
-            this.play();
+            this.themeSound.play();
         }, false);
-        themeSound.play();
-
-        // Projector
-        projector = new THREE.Projector();
+        PB.AudioManager.play("themeSound");
         
         // Renderer
         renderer = new THREE.WebGLRenderer({antialias: true});
@@ -102,20 +57,19 @@ Pinball.Ball = function(config) {
         document.getElementById( 'container' ).appendChild( renderer.domElement );
         
         // Scene
-        scene = new THREE.Scene();
-        sceneCube = new THREE.Scene();
+        self.scene = new THREE.Scene();
 
         // Ammo world
         collisionConfiguration = new Ammo.btDefaultCollisionConfiguration();
         dispatcher = new Ammo.btCollisionDispatcher( collisionConfiguration );
         overlappingPairCache = new Ammo.btDbvtBroadphase();
         solver = new Ammo.btSequentialImpulseConstraintSolver();
-        scene.world = new Ammo.btDiscreteDynamicsWorld( dispatcher, overlappingPairCache, solver, collisionConfiguration );
-        scene.world.setGravity(new Ammo.btVector3(0, -42, 200));
+        self.scene.world = new Ammo.btDiscreteDynamicsWorld( dispatcher, overlappingPairCache, solver, collisionConfiguration );
+        self.scene.world.setGravity(new Ammo.btVector3(0, -42, 200));
 
         //flippers
         var wiperWidth = 70, wiperHeight = 70;
-        wiperAmmoRight= createWall({width: wiperWidth,
+        wiperRight= new PB.Wall({width: wiperWidth,
                                     height: wiperHeight,
                                     depth: 1,
                                     img: null,
@@ -125,8 +79,9 @@ Pinball.Ball = function(config) {
                                     origX: rightWiperX,
                                     origY: bothWiperY,
                                     origZ: bothWiperZ,
-                                    rest: 1000});
-        wiperAmmoLeft = createWall({width: wiperWidth,
+                                    rest: 1000,
+                                    id: "rightWiper"});
+        wiperLeft = new PB.Wall({width: wiperWidth,
                                     height: wiperHeight,
                                     depth: 1,
                                     img: null,
@@ -136,9 +91,10 @@ Pinball.Ball = function(config) {
                                     origX: leftWiperX,
                                     origY: bothWiperY,
                                     origZ: bothWiperZ,
-                                    rest: 1000});
+                                    rest: 1000,
+                                    id: "leftWiper"});
         //the ball
-        ballAmmo = createPokeball();
+        self.pokeball =  new PB.Pinball();
 
         //Make critical AJAX calls early
         var baseURL = "meshes/";
@@ -185,14 +141,14 @@ Pinball.Ball = function(config) {
         // Light
         light = new THREE.DirectionalLight( 0xFFFFFF );
         light.position.set( 0, 700, 220 );
-        light.target.position.copy( scene.position );
+        light.target.position.copy( self.scene.position );
         light.castShadow = true;
         light.shadowCameraLeft = -25;
         light.shadowCameraTop = -25;
         light.shadowCameraRight = 25;
         light.shadowCameraBottom = 25;
         light.shadowBias = -.0001;
-        scene.add( light );
+        self.scene.add( light );
         
         // Camera
         camera = new THREE.PerspectiveCamera(
@@ -202,8 +158,8 @@ Pinball.Ball = function(config) {
             50000
         );
         camera.position.set( 0, 800, 300 );
-        camera.lookAt( scene.position );
-        scene.add( camera );
+        camera.lookAt( self.scene.position );
+        self.scene.add( camera );
 
         //trackball controls
         controls = new THREE.TrackballControls(camera, container);
@@ -220,14 +176,71 @@ Pinball.Ball = function(config) {
             return loader.load(config, baseURL + url, createBlender);
         }
 
-        //Create Voltorbs.
-        createBall(0, "img/voltorb.gif", -35, 0, -105, -Math.PI / 2, -Math.PI / 2, -Math.PI / 3, 22, false, false);
-        createBall(0, "img/voltorb.gif", -85, 0, -155, -Math.PI / 2, -Math.PI / 2, -Math.PI / 3, 22, false, false);
-        createBall(0, "img/voltorb.gif", -20, 0, -185, -Math.PI / 2, -Math.PI / 2, -Math.PI / 3, 22, false, false);
+        //Create Voltorbs
+        new PB.Ball({
+            mass: 0,
+            mapURL: "img/voltorb.gif",
+            origX: -85,
+            origY: 0,
+            origZ: -155,
+            rotationX: -Math.PI / 2,
+            rotationY: 0,
+            rotationZ: -Math.PI / 3,
+            size: 22,
+            useQuat : false,
+            rest: false
+        });
+        new PB.Ball({
+            mass: 0,
+            mapURL: "img/voltorb.gif",
+            origX: -20,
+            origY: 0,
+            origZ: -185,
+            rotationX: -Math.PI / 2,
+            rotationY: 0,
+            rotationZ: -Math.PI / 3,
+            size: 22,
+            useQuat : false,
+            rest: false
+        });
+        new PB.Ball({
+            mass: 0,
+            mapURL: "img/voltorb.gif",
+            origX: -35,
+            origY: 0,
+            origZ: -105,
+            rotationX: -Math.PI / 2,
+            rotationY: 0,
+            rotationZ: -Math.PI / 3,
+            size: 22,
+            useQuat : false,
+            rest: false
+        });
         //Create diglet ammos.
-        createBall(0, null, -190, 0, 135, 0, 0, 0, 22, true);
-        createBall(0, null, 100, 0, 140, 0, 0, 0, 22, true);
-
+        new PB.Ball({
+            mass: 0,
+            mapURL: null,
+            origX: -190,
+            origY: 0,
+            origZ: 135,
+            rotationX: 0,
+            rotationY: 0,
+            rotationZ: 0,
+            size: 22,
+            useQuat : true
+        });
+        new PB.Ball({
+            mass: 0,
+            mapURL: null,
+            origX: 100,
+            origY: 0,
+            origZ: 145,
+            rotationX: 0,
+            rotationY: 0,
+            rotationZ: 0,
+            size: 22,
+            useQuat : true
+        });
         function createBlender(geometry, config) {
             geometry.mergeVertices();
             var Meshtype = config.meshType == "Lambert" ? THREE.MeshLambertMaterial : (config.meshType == "Basic" ? THREE.MeshBasicMaterial : THREE.MeshPhongMaterial);
@@ -235,13 +248,13 @@ Pinball.Ball = function(config) {
             var mesh = new THREE.Mesh( geometry, material );
             mesh.useQuaternion = true;//config.useQuat;
             mesh.scale.set(50, 50, 50);
-            scene.add(mesh);
+            PB.GlobalControl.scene.add(mesh);
             return mesh;
         }
 
         //TODO: fix ammo mesh rotation correlation.
         //Create the ground image.
-        createWall({width: fieldHeight,
+        new PB.Wall({width: fieldHeight,
                     height: fieldWidth,
                     depth: 2,
                     img: THREE.ImageUtils.loadTexture("img/abstractExplosion.jpg"),//"/img/gradientTest.jpg"),//"/img/background.png"),//THREE.ImageUtils.loadTexture("/img/DottedCross.jpg"),//null,//
@@ -253,7 +266,7 @@ Pinball.Ball = function(config) {
                     origZ: 0,
                     meshOnly: true});
         //Create the ground ammo.
-        createWall({width: fieldWidth * 2,
+        new PB.Wall({width: fieldWidth * 2,
                     height: fieldHeight,
                     depth: 2,
                     img: null,
@@ -264,273 +277,131 @@ Pinball.Ball = function(config) {
                     origY: -20,
                     origZ: 0});
         //bottom starting wall
-        createWall({width: defaultWallWidth,
-                    height: 100,
-                    depth: 1,
-                    img: testColor,
+        new PB.Wall({height: 100,
                     rotationX: 0,
-                    rotationY: defaultYRot,
-                    rotationZ: 0,
                     origX: 200,
-                    origY: 0,
                     origZ: 440});
         //wall under staryu
-        createWall({width: defaultWallWidth,
-                    height: 65,
-                    depth: 1,
-                    img: testColor,
+        new PB.Wall({height: 65,
                     rotationX: Math.PI / 4,
-                    rotationY: defaultYRot,
-                    rotationZ: 0,
                     origX: -108,
-                    origY: 0,
                     origZ: -42});
         //smaller wall
-        createWall({width: defaultWallWidth,
-                    height: 30,
-                    depth: 1,
-                    img: testColor,
+        new PB.Wall({height: 30,
                     rotationX: Math.PI / 4,
-                    rotationY: defaultYRot,
-                    rotationZ: 0,
                     origX: -153,
-                    origY: 0,
                     origZ: 37});
         //straight vertical wall on staryu island
-        createWall({width: defaultWallWidth,
-                    height: 35,
-                    depth: 1,
-                    img: testColor,
+        new PB.Wall({height: 35,
                     rotationX: Math.PI / 2,
-                    rotationY: defaultYRot,
-                    rotationZ: 0,
                     origX: -135,
-                    origY: 0,
                     origZ: -210});
         //straight extension of staryu island
-        createWall({width: defaultWallWidth,
-                    height: 70,
-                    depth: 1,
-                    img: testColor,
+        new PB.Wall({height: 70,
                     rotationX: -Math.PI / 4,
-                    rotationY: defaultYRot,
-                    rotationZ: 0,
                     origX: -110,
-                    origY: 0,
                     origZ: -90});
         //left-side left vertical blue wall
-        createWall({width: defaultWallWidth,
-                    height: 45,
-                    depth: 1,
-                    img: testColor,
+        new PB.Wall({height: 45,
                     rotationX: Math.PI / 2,
-                    rotationY: defaultYRot,
-                    rotationZ: 0,
                     origX: -85,
-                    origY: 0,
                     origZ: -248});
         //right-side left vertical blue wall
-        createWall({width: defaultWallWidth,
-                    height: 50,
-                    depth: 1,
-                    img: testColor,
+        new PB.Wall({height: 50,
                     rotationX: Math.PI / 2,
-                    rotationY: defaultYRot,
-                    rotationZ: 0,
                     origX: -70,
-                    origY: 0,
                     origZ: -255});
         //left-side right vertical blue wall
-        createWall({width: defaultWallWidth,
-                    height: 45,
-                    depth: 1,
-                    img: testColor,
+        new PB.Wall({height: 45,
                     rotationX: Math.PI / 2,
-                    rotationY: defaultYRot,
-                    rotationZ: 0,
                     origX: -25,
-                    origY: 0,
                     origZ: -270});
         //right-side right vertical blue wall
-        createWall({width: defaultWallWidth,
-                    height: 45,
-                    depth: 1,
-                    img: testColor,
+        new PB.Wall({height: 45,
                     rotationX: Math.PI / 2,
-                    rotationY: defaultYRot,
-                    rotationZ: 0,
                     origX: -5,
-                    origY: 0,
                     origZ: -270});
         //right orange sickle bottom surface
-        createWall({width: defaultWallWidth,
-                    height: 140,
-                    depth: 1,
-                    img: testColor,
+        new PB.Wall({height: 140,
                     rotationX: -.9,
-                    rotationY: defaultYRot,
-                    rotationZ: 0,
                     origX: 115,
-                    origY: 0,
                     origZ: -255});
         //left bellsprout wall
-        createWall({width: defaultWallWidth,
-                    height: 200,
-                    depth: 1,
-                    img: testColor,
+        new PB.Wall({height: 200,
                     rotationX: -1.6,
-                    rotationY: defaultYRot,
-                    rotationZ: 0,
                     origX: 40,
-                    origY: 0,
                     origZ: -180});
         //left bellsprout wall extension
-        createWall({width: defaultWallWidth,
-                    height: 50,
-                    depth: 1,
-                    img: testColor,
+        new PB.Wall({height: 50,
                     rotationX: 1.4,
-                    rotationY: defaultYRot,
-                    rotationZ: 0,
                     origX: 35,
-                    origY: 0,
                     origZ: -58});
         //bellsprout lowest wall
-        createWall({width: defaultWallWidth,
-                    height: 45,
-                    depth: 1,
-                    img: testColor,
+        new PB.Wall({height: 45,
                     rotationX: -.8,
-                    rotationY: defaultYRot,
-                    rotationZ: 0,
                     origX: 70,
-                    origY: 0,
                     origZ: 35});
         //bottom left vertical blue wall
-        createWall({width: defaultWallWidth,
-                    height: 70,
-                    depth: 1,
-                    img: testColor,
+        new PB.Wall({height: 70,
                     rotationX: Math.PI / 2,
-                    rotationY: defaultYRot,
-                    rotationZ: 0,
                     origX: -202,
-                    origY: 0,
                     origZ: 255});
         //bottom right vertical blue wall
-        createWall({width: defaultWallWidth,
-                    height: 70,
-                    depth: 1,
-                    img: testColor,
+        new PB.Wall({height: 70,
                     rotationX: Math.PI / 2,
-                    rotationY: defaultYRot,
-                    rotationZ: 0,
                     origX: 117,
-                    origY: 0,
                     origZ: 255});
         //bottom left slanted blue wall
-        createWall({width: defaultWallWidth,
-                    height: 110,
-                    depth: 1,
-                    img: testColor,
+        new PB.Wall({height: 110,
                     rotationX: -3.75,
-                    rotationY: defaultYRot,
-                    rotationZ: 0,
                     origX: -160,
-                    origY: 0,
                     origZ: 325});
         //bottom left slanted blue wall
-        createWall({width: defaultWallWidth,
-                    height: 110,
-                    depth: 1,
-                    img: testColor,
+        new PB.Wall({height: 110,
                     rotationX: 3.75,
-                    rotationY: defaultYRot,
-                    rotationZ: 0,
                     origX: 70,
-                    origY: 0,
                     origZ: 325});
         //left side left triangle
-        createWall({width: defaultWallWidth,
-                    height: 70,
-                    depth: 1,
-                    img: testColor,
+        new PB.Wall({height: 70,
                     rotationX: Math.PI / 2,
-                    rotationY: defaultYRot,
-                    rotationZ: 0,
                     origX: -165,
-                    origY: 0,
                     origZ: 245});
         //right side right triangle
-        createWall({width: defaultWallWidth,
-                    height: 70,
-                    depth: 1,
-                    img: testColor,
+        new PB.Wall({height: 70,
                     rotationX: Math.PI / 2,
-                    rotationY: defaultYRot,
-                    rotationZ: 0,
                     origX: 85,
-                    origY: 0,
                     origZ: 245});
         //bouncy wall left triangle
-        createWall({width: defaultWallWidth,
-                    height: 90,
-                    depth: 1,
-                    img: testColor,
+        new PB.Wall({height: 90,
                     rotationX: -1.2,
-                    rotationY: defaultYRot,
-                    rotationZ: 0,
                     origX: -145,
-                    origY: 0,
                     origZ: 255,
-                    id: "leftBumper"});
+                    id: "leftBumper",
+                    isBouncy: true});
         //bouncy wall right triangle
-        createWall({width: defaultWallWidth,
-                    height: 90,
-                    depth: 1,
-                    img: testColor,
+        new PB.Wall({height: 90,
                     rotationX: 1.2,
-                    rotationY: defaultYRot,
-                    rotationZ: 0,
                     origX: 65,
-                    origY: 0,
                     origZ: 255,
-                    id: "rightBumper"});
+                    id: "rightBumper",
+                    isBouncy: true});
         //wall left of starting position
-        createWall({width: defaultWallWidth,
-                    height: 90,
-                    depth: 1,
-                    img: testColor,
+        new PB.Wall({height: 90,
                     rotationX: Math.PI / 2,
-                    rotationY: defaultYRot,
-                    rotationZ: 0,
                     origX: 185,
-                    origY: 0,
                     origZ: 400});
         //left bottom wall
-        createWall({width: defaultWallWidth,
-                    height: 200,
-                    depth: 1,
-                    img: testColor,
+        new PB.Wall({height: 200,
                     rotationX: Math.PI / 2,
-                    rotationY: defaultYRot,
-                    rotationZ: 0,
                     origX: -258,
-                    origY: 0,
                     origZ: 300});
         //right bottom wall
-        createWall({width: defaultWallWidth,
-                    height: 200,
-                    depth: 1,
-                    img: testColor,
+        new PB.Wall({height: 200,
                     rotationX: Math.PI / 2,
-                    rotationY: defaultYRot,
-                    rotationZ: 0,
                     origX: 165,
-                    origY: 0,
                     origZ: 300});
         // top red semicircle
-        createCurvedWall({
+        new PB.CurvedWall({
             reps: 25,
             startAngle: -Math.PI / 2,
             endAngle: 1 * Math.PI / 2,
@@ -539,7 +410,7 @@ Pinball.Ball = function(config) {
             radius: 245
         });
         //left upper wall
-        createCurvedWall({
+        new PB.CurvedWall({
             reps: 10,
             startAngle: 1.1,
             endAngle: 2.2,
@@ -548,7 +419,7 @@ Pinball.Ball = function(config) {
             radius: 400
         });
         //right upper wall
-        createCurvedWall({
+        new PB.CurvedWall({
             reps: 10,
             startAngle: -2.1,
             endAngle: -1.2,
@@ -557,7 +428,7 @@ Pinball.Ball = function(config) {
             radius: 400
         });
         //left side of small left island
-        createCurvedWall({
+        new PB.CurvedWall({
             reps: 8,
             startAngle: 1.3,
             endAngle: 2.2,
@@ -566,7 +437,7 @@ Pinball.Ball = function(config) {
             radius: 230
         });
         //right side of small left island
-        createCurvedWall({
+        new PB.CurvedWall({
             reps: 8,
             startAngle: 1.4,
             endAngle: 2.4,
@@ -575,7 +446,7 @@ Pinball.Ball = function(config) {
             radius: 210
         });
         //left side of staryu island
-        createCurvedWall({
+        new PB.CurvedWall({
             reps: 8,
             startAngle: 1.15,
             endAngle: 2.1,
@@ -584,7 +455,7 @@ Pinball.Ball = function(config) {
             radius: 220
         });
         //inner curve of staryu island
-        createCurvedWall({
+        new PB.CurvedWall({
             reps: 6,
             startAngle: 1.1,
             endAngle: 2.2,
@@ -593,7 +464,7 @@ Pinball.Ball = function(config) {
             radius: 70
         });
         //top orange sickle
-        createCurvedWall({
+        new PB.CurvedWall({
             reps: 12,
             startAngle: -.6,
             endAngle: .6,
@@ -602,7 +473,7 @@ Pinball.Ball = function(config) {
             radius: 206
         });
         //left lower wall
-        createCurvedWall({
+        new PB.CurvedWall({
             reps: 10,
             startAngle: .3,
             endAngle: Math.PI / 2,
@@ -611,7 +482,7 @@ Pinball.Ball = function(config) {
             radius: 50
         });
         //right lower wall
-        createCurvedWall({
+        new PB.CurvedWall({
             reps: 10,
             startAngle: -.3,
             endAngle: -Math.PI / 2,
@@ -651,79 +522,114 @@ Pinball.Ball = function(config) {
 
         var skybox = new THREE.Mesh( new THREE.CubeGeometry( 10000, 10000, 10000 ), material );
     
-        scene.add(skybox);
+        self.scene.add(skybox);
     };
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    function createCurvedWall(config) {
-        var rotAngle;
-        for (var i = 0; i < config.reps; i++) {
-            rotAngle = config.startAngle + (((config.endAngle - config.startAngle) / config.reps) * i);
-            // newRotX = Math.atan(Math.tan(rotAngle) / config.stretch);
-            // console.log(newRotX);
-            createWall({width: defaultWallWidth,
-                        height: (config.endAngle - config.startAngle) / config.reps * config.radius,//500,
-                        depth: 1,
-                        img: testColor,
-                        rotationX: rotAngle,
-                        rotationY: defaultYRot,
-                        rotationZ: 0,
-                        origX: config.centerX - (Math.sin(rotAngle) * config.radius),
-                        origY: 0,
-                        origZ: config.centerZ - (Math.cos(rotAngle) * config.radius)
-            });
-        }
-    }
 
-    function createWall(config) {
-        //if (img) {
-        if (config.img) {
-            var ground = new THREE.Mesh(
-                new THREE.CubeGeometry( config.height, config.width, config.depth ),
-                typeof config.img == "number" ? new THREE.MeshBasicMaterial({ color: config.img }) : new THREE.MeshPhongMaterial({ color: 0xffffff, specular: 0x888888,  map: config.img })
-            );
-            ground.receiveShadow = true;
-            ground.useQuaternion = false;
-            ground.position.x = config.origX;
-            ground.position.y = config.origY;
-            ground.position.z = config.origZ;
-            ground.rotation.x = config.rotationY - Math.PI / 2;//0
-            ground.rotation.y = config.rotationX;//correct
-            ground.rotation.z = config.rotationZ;
-            scene.add( ground );
-        }
-        //console.log(config.origX);console.log(config.origZ);console.log(config);
-        // console.log(height);
-        //physics
-        if (!config.meshOnly) {
-            var transformQuat = new Ammo.btQuaternion();
-            transformQuat.setEuler(config.rotationX, config.rotationY, config.rotationZ);
-            var groundShape = new Ammo.btBoxShape(new Ammo.btVector3( config.height / 2, config.depth / 2, config.width / 2 ));
-            var groundTransform = new Ammo.btTransform();
-            groundTransform.setIdentity();
-            groundTransform.setOrigin(new Ammo.btVector3( config.origX, config.origY, config.origZ ));
-            groundTransform.setRotation(transformQuat);
-            
-            var groundMass = 0;
-            var localInertia = new Ammo.btVector3(0, 0, 0);
-            var motionState = new Ammo.btDefaultMotionState( groundTransform );
-            var rbInfo = new Ammo.btRigidBodyConstructionInfo( groundMass, motionState, groundShape, localInertia );
-            rbInfo.m_restitution = config.rest;
-            var groundAmmo = new Ammo.btRigidBody( rbInfo );
-            scene.world.addRigidBody( groundAmmo );
-            //bounciness check
-            if (config.id) {
-                BOUNCYPOINTERS[groundAmmo.a] = groundAmmo;
+    function render() {
+        renderer.render(self.scene, camera);
+    };
+
+    function main() {
+        updatePhysics();
+        controls.update();
+        render();
+        window.requestAnimFrame(main);
+    };
+
+    function updatePhysics() {
+        var scene = PB.GlobalControl.scene;
+        var pokeball = PB.GlobalControl.pokeball;
+        var transform = new Ammo.btTransform(), origin, rotation;
+        scene.world.stepSimulation( 1 / 60, 5 );
+        var numManifolds = scene.world.getDispatcher().getNumManifolds();
+        for (var i = 0; i < numManifolds; i++) {
+            var contactManifold = scene.world.getDispatcher().getManifoldByIndexInternal(i);
+            var obA = contactManifold.getBody0();
+            var obB = contactManifold.getBody1();
+            var obCollision = self.BOUNCYPOINTERS[obA] || self.BOUNCYPOINTERS[obB];
+            if (obCollision) {
+                if (contactManifold.getContactPoint(0).getDistance() < .8) {
+                    console.log
+                    obCollision.wrapper.createForce();
+                }
             }
-            // console.log(groundAmmo.a);
-            groundAmmo.id = config.id;
-            return groundAmmo;
+        }
+        // console.log("-----------");
+        if (leftForce) {
+            wiperLeft.createForce();
+            leftForce = false;
+        } else if (rightForce) {
+            wiperRight.createForce();
+            rightForce = false;
+        }
+        
+        pokeball.ammo.getMotionState().getWorldTransform(transform);
+        if (transform.getOrigin().z() > fieldHeight) {
+            pokeball.remove();
+            PB.GlobalControl.pokeball = new PB.Pinball();
+            firstSpace = true;
+        }
+        origin = transform.getOrigin();
+        pokeball.mesh.position.x = origin.x();
+        pokeball.mesh.position.y = origin.y();
+        pokeball.mesh.position.z = origin.z();
+        
+        rotation = transform.getRotation();
+        pokeball.mesh.quaternion.x = rotation.x();
+        pokeball.mesh.quaternion.y = rotation.y();
+        pokeball.mesh.quaternion.z = rotation.z();
+        pokeball.mesh.quaternion.w = rotation.w();
+        //rotate the flippers (meshes only)
+        if (leftWiperPressed && leftWiperAngle < wiperLimit) {
+            leftWiperAngle += wiperSpeed;
+            wiperLeft.dummyMesh.rotation.y += wiperSpeed;
+        } else if (!leftWiperPressed && leftWiperAngle > 0) {
+            leftWiperAngle -= wiperSpeed;
+            wiperLeft.dummyMesh.rotation.y -= wiperSpeed;
+        }
+        if (rightWiperPressed && rightWiperAngle < wiperLimit) {
+            rightWiperAngle += wiperSpeed;
+            wiperRight.dummyMesh.rotation.y -= wiperSpeed;
+        } else if (!rightWiperPressed && rightWiperAngle > 0) {
+            rightWiperAngle -= wiperSpeed;
+            wiperRight.dummyMesh.rotation.y += wiperSpeed;
         }
     };
 
-    initControls = function() {
+    function initAnim() {
+        if (!waitingAJAXCalls) {
+            wiperLeft.mesh = animMeshes.leftWiper;
+            var dummyLeft = new THREE.Object3D();
+            var xOffset = 110;
+            var zOffset = -380;
+            wiperLeft.mesh.position.x = xOffset;
+            wiperLeft.mesh.position.z = zOffset;
+            dummyLeft.position.x = -xOffset;
+            dummyLeft.position.z = -zOffset;
+            dummyLeft.add(wiperLeft.mesh);
+            wiperLeft.dummyMesh = dummyLeft;
+            PB.GlobalControl.scene.add(dummyLeft);
+
+            wiperRight.mesh = animMeshes.rightWiper;
+            var dummyRight = new THREE.Object3D();
+            xOffset = -30;
+            zOffset = -380;
+            wiperRight.mesh.position.x = xOffset;
+            wiperRight.mesh.position.z = zOffset;
+            dummyRight.position.x = -xOffset;
+            dummyRight.position.z = -zOffset;
+            dummyRight.add(wiperRight.mesh);
+            wiperRight.dummyMesh = dummyRight;
+            PB.GlobalControl.scene.add(dummyRight);
+
+            requestAnimFrame(main);
+        }
+    };
+
+    function initControls() {
         document.addEventListener('keydown', function(e) {
             if (e.keyCode == 37) {
-                !leftHolding && flipperSound.play();
+                !leftHolding && PB.AudioManager.play("flipperSound");
                 setTimeout(function() {
                     if (leftHolding) {
                         var wiperRotationQuat = new Ammo.btQuaternion();
@@ -731,7 +637,7 @@ Pinball.Ball = function(config) {
                         wiperRotationQuat.setEuler(.1, Math.PI / 2, 0);
                         wiperTransformChange.setRotation(wiperRotationQuat);
                         wiperTransformChange.setOrigin(new Ammo.btVector3(leftWiperX + 5, bothWiperY, bothWiperZ - 15));
-                        wiperAmmoLeft.setMotionState(new Ammo.btDefaultMotionState(wiperTransformChange));
+                        wiperLeft.ammo.setMotionState(new Ammo.btDefaultMotionState(wiperTransformChange));
                     }
                 }, 100);
 
@@ -739,7 +645,7 @@ Pinball.Ball = function(config) {
                 leftForce = !leftHolding;
                 leftHolding = true;
             } else if (e.keyCode == 39) {
-                !rightHolding && flipperSound.play();
+                !rightHolding && PB.AudioManager.play("flipperSound");
                 setTimeout(function() {
                     if (rightHolding) {
                         var wiperRotationQuat = new Ammo.btQuaternion();
@@ -747,7 +653,7 @@ Pinball.Ball = function(config) {
                         wiperRotationQuat.setEuler(-.1, Math.PI / 2, 0);
                         wiperTransformChange.setRotation(wiperRotationQuat);
                         wiperTransformChange.setOrigin(new Ammo.btVector3(rightWiperX + 5, bothWiperY, bothWiperZ - 15));
-                        wiperAmmoRight.setMotionState(new Ammo.btDefaultMotionState(wiperTransformChange));
+                        wiperRight.ammo.setMotionState(new Ammo.btDefaultMotionState(wiperTransformChange));
                     }
                 }, 100);
 
@@ -755,9 +661,9 @@ Pinball.Ball = function(config) {
                 rightForce = !rightHolding;
                 rightHolding = true;
             } else if (e.keyCode == 32 && firstSpace) {
-                launchSound.play();
-                // firstSpace = false;
-                ballAmmo.applyCentralImpulse(new Ammo.btVector3(0, 0, -200000));
+                PB.AudioManager.play("launchSound");
+                firstSpace = false;
+                PB.GlobalControl.pokeball.ammo.applyCentralImpulse(new Ammo.btVector3(0, 0, -200000));
             }
         });
         document.addEventListener('keyup', function(e) {
@@ -770,7 +676,7 @@ Pinball.Ball = function(config) {
                 wiperRotationQuat.setEuler(-wiperRotation, Math.PI / 2, 0);
                 wiperTransformChange.setRotation(wiperRotationQuat);
                 wiperTransformChange.setOrigin(new Ammo.btVector3(leftWiperX, bothWiperY, bothWiperZ));
-                wiperAmmoLeft.setMotionState(new Ammo.btDefaultMotionState(wiperTransformChange));
+                wiperLeft.ammo.setMotionState(new Ammo.btDefaultMotionState(wiperTransformChange));
             } else if (e.keyCode == 39) {
                 rightWiperPressed = false;
                 rightHolding = false;
@@ -780,216 +686,243 @@ Pinball.Ball = function(config) {
                 wiperRotationQuat.setEuler(wiperRotation, Math.PI / 2, 0);
                 wiperTransformChange.setRotation(wiperRotationQuat);
                 wiperTransformChange.setOrigin(new Ammo.btVector3(rightWiperX, bothWiperY, bothWiperZ));
-                wiperAmmoRight.setMotionState(new Ammo.btDefaultMotionState(wiperTransformChange));
+                wiperRight.ammo.setMotionState(new Ammo.btDefaultMotionState(wiperTransformChange));
             }
         });
     };
-
-    var xLimitRight = -30, xOrigRight = 15, zOrig = 345,
-        xLimitLeft = -50, xOrigLeft = -110;
-
-    function createForce(left) {
-        score.innerHTML = parseInt(score.innerHTML) + 200;
-        var distX, distY, vector,
-            posX = ballAmmo.mesh.position.x,
-            posZ = ballAmmo.mesh.position.z;
-        if (left && checkZone(true)) {
-            vector = new Ammo.btVector3((zOrig - posZ) * ((xOrigLeft - posX) / 40) * 1000, 0, -100000 * (((posZ - zOrig) / 30) + .6) * (((posX - xOrigLeft) / 40) + .8));
-            ballAmmo.applyCentralImpulse(vector);
-        } else if (checkZone(false)) {
-            vector = new Ammo.btVector3((zOrig - posZ) * ((xOrigRight - posX) / 40) * 1000, 0, -100000 * (((posZ - zOrig) / 30) + .6) * (((xOrigRight - posX) / 40) + .8));
-            ballAmmo.applyCentralImpulse(vector);
-        }
+    return self;
+}();
+PB.ScoreManager = function() {
+    var self = {};
+    self.add = function(val) {
+        var score = this.scoreEl;
+        score && (score.innerHTML = parseInt(score.innerHTML) + val);
     };
-
-    function bounce(object) {
-        var vector;
-        score.innerHTML = parseInt(score.innerHTML) + 150;
-        bounceSound.play();
-        switch (object.id) {
-            case "leftBumper":
-                vector = new Ammo.btVector3(30000, 0, -30000);
-                break;
-            case "rightBumper":
-                vector = new Ammo.btVector3(-30000, 0, -30000);
-                break;
-            default:
-                console.log("Bad things.")
-        }
-        ballAmmo.applyCentralImpulse(vector);
+    return self;
+}();
+PB.AudioManager = function() {
+    var self = {};
+    self.sounds = {
+        flipperSound : new Audio("sounds/flipper.mp3"), 
+        launchSound : new Audio("sounds/launch.mp3"), 
+        themeSound : new Audio("sounds/theme.mp3"), 
+        bounceSound : new Audio("sounds/boing.mp3")
+    }
+    self.play = function(soundName) {
+        self.sounds[soundName].play();
     };
+    return self;
+}();
+//CLASSES
+PB.AmmoThreeObject = function(config) {
+    this.config = config;
+};
+PB.AmmoThreeObject.prototype.assignValues = function() {
+    this.mesh.receiveShadow = true;
+    this.mesh.useQuaternion = false;
+    this.mesh.position.x = this.config.origX;
+    this.mesh.position.y = this.config.origY;
+    this.mesh.position.z = this.config.origZ;
+    this.mesh.rotation.x = this.config.rotationY - Math.PI / 2;//0
+    this.mesh.rotation.y = this.config.rotationX;//correct
+    this.mesh.rotation.z = this.config.rotationZ;
+};
+PB.AmmoThreeObject.prototype.remove = function() {
+    PB.GlobalControl.scene.remove(this.mesh);
+    Ammo.destroy(this.ammo);
+};
+PB.AmmoThreeObject.prototype.createForce = function() {
+    var vector;
+    var d = PB.WiperData;
+    switch (this.ammo.id) {
+        case "leftBumper":
+            PB.AudioManager.play("bounceSound");
+            PB.ScoreManager.add(150);
+            vector = new Ammo.btVector3(30000, 0, -30000);
+            break;
+        case "rightBumper":
+            PB.AudioManager.play("bounceSound");
+            PB.ScoreManager.add(150);
+            vector = new Ammo.btVector3(-30000, 0, -30000);
+            break;
+        case "leftWiper":
+            var pokeball = PB.GlobalControl.pokeball;
+            var distX, distY, vector,
+                posX = pokeball.mesh.position.x,
+                posZ = pokeball.mesh.position.z;
+            if (PB.AmmoThreeObject.checkZone(true)) {
+                vector = new Ammo.btVector3((d.zOrig - posZ) * ((d.xOrigLeft - posX) / 40) * 1000, 0, -100000 * (((posZ - d.zOrig) / 30) + .6) * (((posX - d.xOrigLeft) / 40) + .8));
+                // pokeball.ammo.applyCentralImpulse(vector);
+                PB.ScoreManager.add(200);
+            }
+            break;
+        case "rightWiper":
+            var pokeball = PB.GlobalControl.pokeball;
+            var distX, distY, vector,
+                posX = pokeball.mesh.position.x,
+                posZ = pokeball.mesh.position.z;
+            if (PB.AmmoThreeObject.checkZone(false)) {
+                vector = new Ammo.btVector3((d.zOrig - posZ) * ((d.xOrigRight - posX) / 40) * 1000, 0, -100000 * (((posZ - d.zOrig) / 30) + .6) * (((d.xOrigRight - posX) / 40) + .8));
+                // pokeball.ammo.applyCentralImpulse(vector);
+                PB.ScoreManager.add(200);
+            }
+            break;
+        default:
+            console.log("Bad things.")
+    }
+    vector && PB.GlobalControl.pokeball.ammo.applyCentralImpulse(vector);
+};
+PB.AmmoThreeObject.checkZone = function(left) {//static
+    var posX = PB.GlobalControl.pokeball.mesh.position.x,
+        posZ = PB.GlobalControl.pokeball.mesh.position.z
+        leftFulcrumX = -110,
+        rightFulcrumX = 25;
+    var d = PB.WiperData;
+        
+    if (left && posX < d.xLimitLeft && posX > leftFulcrumX) {
+        if (posZ > d.zOrig) {
+            return posZ < d.zOrig + (posX - leftFulcrumX);
+        } else {
+            return posZ > d.zOrig - (posX - leftFulcrumX) * .8;
+        }
+        // return PB.GlobalControl.pokeball.mesh.position.x
+    } else if (posX < rightFulcrumX && posX > d.xLimitRight) {
+        if (posZ > d.zOrig) {
+            return posZ < d.zOrig + (rightFulcrumX - posX);
+        } else {
+            return posZ > d.zOrig - (rightFulcrumX - posX) * .8;
+        }
+    }
+}
+PB.Wall = function(config) {
+    var self = new PB.AmmoThreeObject(config);
+    var scene = PB.GlobalControl.scene;
+    //defaults (explicitly check undefined b/c !0 == true and null == undefined (not necessary for all but might as well be consistent))
+    (config.rotationY === undefined) && (config.rotationY = Math.PI / 2);
+    (config.rotationZ === undefined) && (config.rotationZ = 0);
+    (config.width === undefined) && (config.width = 100);
+    (config.depth === undefined) && (config.depth = 1);
+    (config.origY === undefined) && (config.origY = 0);
+    (config.img === undefined) && (config.img = PB.Wall.testColor);
+    //mesh
+    if (config.img) {
+        self.mesh = new THREE.Mesh(
+            new THREE.CubeGeometry( config.height, config.width, config.depth ),
+            typeof config.img == "number" ? new THREE.MeshBasicMaterial({ color: config.img }) : new THREE.MeshPhongMaterial({ color: 0xffffff, specular: 0x888888,  map: config.img })
+        );
+        self.assignValues();
+        self.mesh.useQuaternion = false;
+        PB.GlobalControl.scene.add( self.mesh );
+    }
+    //physics
+    if (!config.meshOnly) {
+        var transformQuat = new Ammo.btQuaternion();
+        transformQuat.setEuler(config.rotationX, config.rotationY, config.rotationZ);
+        var groundShape = new Ammo.btBoxShape(new Ammo.btVector3( config.height / 2, config.depth / 2, config.width / 2 ));
+        var groundTransform = new Ammo.btTransform();
+        groundTransform.setIdentity();
+        groundTransform.setOrigin(new Ammo.btVector3( config.origX, config.origY, config.origZ ));
+        groundTransform.setRotation(transformQuat);
+        
+        var groundMass = 0;
+        var localInertia = new Ammo.btVector3(0, 0, 0);
+        var motionState = new Ammo.btDefaultMotionState( groundTransform );
+        var rbInfo = new Ammo.btRigidBodyConstructionInfo( groundMass, motionState, groundShape, localInertia );
+        rbInfo.m_restitution = config.rest;
+        var groundAmmo = new Ammo.btRigidBody( rbInfo );
+        scene.world.addRigidBody( groundAmmo );
+        //bounciness check
+        if (config.isBouncy) {
+            PB.GlobalControl.BOUNCYPOINTERS[groundAmmo.a] = groundAmmo;
+        }
+        groundAmmo.id = config.id;
+        self.ammo = groundAmmo;
+        groundAmmo.wrapper = self;
+    }
+    return self;
+};
+PB.Wall.prototype = PB.AmmoThreeObject.prototype;
+PB.Wall.testColor = 0xaaaaaa;
+PB.CurvedWall = function(config) {
+    var rotAngle;
+    for (var i = 0; i < config.reps; i++) {
+        rotAngle = config.startAngle + (((config.endAngle - config.startAngle) / config.reps) * i);
+        new PB.Wall({height: (config.endAngle - config.startAngle) / config.reps * config.radius,
+                    img: PB.Wall.testColor,
+                    rotationX: rotAngle,
+                    origX: config.centerX - (Math.sin(rotAngle) * config.radius),
+                    origZ: config.centerZ - (Math.cos(rotAngle) * config.radius)
+        });
+    }
+};
+PB.Ball = function(config) {
+    var ball, position_x, position_z, pokeball, scene = PB.GlobalControl.scene,
+        startTransform, localInertia, boxShape, motionState, rbInfo;
 
-    function checkZone(left) {
-        var posX = ballAmmo.mesh.position.x,
-            posZ = ballAmmo.mesh.position.z
-            leftFulcrumX = -110,
-            rightFulcrumX = 25;
+    var self = new PB.AmmoThreeObject(config);
+    // Create 3D ball model
+    if (config.mapURL) {
+        self.mesh = new THREE.Mesh(
+            new THREE.SphereGeometry( config.size, config.size, config.size),
+            new THREE.MeshPhongMaterial({ color: 0xffffff, specular: 0x888888, map: THREE.ImageUtils.loadTexture(config.mapURL) })
+        );
+
+        self.assignValues();
+        self.mesh.useQuaternion = config.useQuat;
+        PB.GlobalControl.scene.add( self.mesh );
+    }
             
-        if (left && posX < xLimitLeft && posX > leftFulcrumX) {
-            if (posZ > zOrig) {
-                return posZ < zOrig + (posX - leftFulcrumX);
-            } else {
-                return posZ > zOrig - (posX - leftFulcrumX) * .8;
-            }
-            return ballAmmo.mesh.position.x
-        } else if (posX < rightFulcrumX && posX > xLimitRight) {
-            if (posZ > zOrig) {
-                return posZ < zOrig + (rightFulcrumX - posX);
-            } else {
-                return posZ > zOrig - (rightFulcrumX - posX) * .8;
-            }
-        }
-    }
-
-    createPokeball = function() {
-        var ball = createBall(100, "img/pokeball.png", startX, 0, 130, 0, 0, 0, 13, true, 2);
-        ball.setSleepingThresholds(0, 0);
-        return ball;
-    }
+    // Create ball physics model
+    startTransform = new Ammo.btTransform();
+    startTransform.setIdentity();
+    startTransform.setOrigin(new Ammo.btVector3( config.origX, config.origY, config.origZ ));
     
-    createBall = function(mass, mapURL, startX, startY, startZ, rotX, rotY, rotZ, size, useQuat, rest) {
-        var ball, position_x, position_z, ballAmmo,
-            mass, startTransform, localInertia, boxShape, motionState, rbInfo;
-
-        // Create 3D ball model
-        if (mapURL) {
-            ball = new THREE.Mesh(
-                new THREE.SphereGeometry( size, size, size),
-                new THREE.MeshPhongMaterial({ color: 0xffffff, specular: 0x888888, map: THREE.ImageUtils.loadTexture(mapURL) })
-            );
-
-            ball.castShadow = true;
-            ball.receiveShadow = true;
-            ball.useQuaternion = useQuat;
-            ball.position.x = startX;
-            ball.position.y = startY;
-            ball.position.z = startZ;
-            ball.rotation.x = rotX;
-            ball.rotation.y = rotY;
-            ball.rotation.z = rotZ;
-
-            scene.add( ball );
-        }
-                
-        // Create ball physics model
-        startTransform = new Ammo.btTransform();
-        startTransform.setIdentity();
-        startTransform.setOrigin(new Ammo.btVector3( startX, startY, startZ ));
-        
-        localInertia = new Ammo.btVector3(0, 0, 0);
-        
-        boxShape = new Ammo.btSphereShape(size);
-        boxShape.calculateLocalInertia( mass, localInertia );
-        
-        motionState = new Ammo.btDefaultMotionState( startTransform );
-        rbInfo = new Ammo.btRigidBodyConstructionInfo( mass, motionState, boxShape, localInertia );
-        rbInfo.m_restitution = rest;
-        ballAmmo = new Ammo.btRigidBody( rbInfo );
-        scene.world.addRigidBody( ballAmmo );
-        
-        ballAmmo.mesh = ball;
-        return ballAmmo;
-    };
+    localInertia = new Ammo.btVector3(0, 0, 0);
     
-    updatePhysics = function() {
-        var transform = new Ammo.btTransform(), origin, rotation;
-        scene.world.stepSimulation( 1 / 60, 5 );
-        var numManifolds = scene.world.getDispatcher().getNumManifolds();
-        for (var i = 0; i < numManifolds; i++) {
-            var contactManifold = scene.world.getDispatcher().getManifoldByIndexInternal(i);
-            var obA = contactManifold.getBody0();
-            var obB = contactManifold.getBody1();
-            var obCollision = BOUNCYPOINTERS[obA] || BOUNCYPOINTERS[obB];
-            if (obCollision) {
-                if (contactManifold.getContactPoint(0).getDistance() < 1) {
-                    bounce(obCollision);
-                }
-            }
-        }
-        // console.log("-----------");
-        if (leftForce) {
-            createForce(true);
-            leftForce = false;
-        } else if (rightForce) {
-            createForce(false);
-            rightForce = false;
-        }
-        
-        ballAmmo.getMotionState().getWorldTransform(transform);
-        if (transform.getOrigin().z() > fieldHeight) {
-            Ammo.destroy(ballAmmo);
-            scene.remove(ballAmmo.mesh);
-            ballAmmo = createPokeball();
-            firstSpace = true;
-        }
-        origin = transform.getOrigin();
-        ballAmmo.mesh.position.x = origin.x();
-        ballAmmo.mesh.position.y = origin.y();
-        ballAmmo.mesh.position.z = origin.z();
-        
-        rotation = transform.getRotation();
-        ballAmmo.mesh.quaternion.x = rotation.x();
-        ballAmmo.mesh.quaternion.y = rotation.y();
-        ballAmmo.mesh.quaternion.z = rotation.z();
-        ballAmmo.mesh.quaternion.w = rotation.w();
-        //rotate the flippers (meshes only)
-        if (leftWiperPressed && leftWiperAngle < wiperLimit) {
-            leftWiperAngle += wiperSpeed;
-            wiperAmmoLeft.dummyMesh.rotation.y += wiperSpeed;
-        } else if (!leftWiperPressed && leftWiperAngle > 0) {
-            leftWiperAngle -= wiperSpeed;
-            wiperAmmoLeft.dummyMesh.rotation.y -= wiperSpeed;
-        }
-        if (rightWiperPressed && rightWiperAngle < wiperLimit) {
-            rightWiperAngle += wiperSpeed;
-            wiperAmmoRight.dummyMesh.rotation.y -= wiperSpeed;
-        } else if (!rightWiperPressed && rightWiperAngle > 0) {
-            rightWiperAngle -= wiperSpeed;
-            wiperAmmoRight.dummyMesh.rotation.y += wiperSpeed;
-        }
-    };
-
-    function initAnim() {
-        if (!waitingAJAXCalls) {
-            wiperAmmoLeft.mesh = animMeshes.leftWiper;
-            var dummyLeft = new THREE.Object3D();
-            var xOffset = 110;
-            var zOffset = -380;
-            wiperAmmoLeft.mesh.position.x = xOffset;
-            wiperAmmoLeft.mesh.position.z = zOffset;
-            dummyLeft.position.x = -xOffset;
-            dummyLeft.position.z = -zOffset;
-            dummyLeft.add(wiperAmmoLeft.mesh);
-            wiperAmmoLeft.dummyMesh = dummyLeft;
-            scene.add(dummyLeft);
-
-            wiperAmmoRight.mesh = animMeshes.rightWiper;
-            var dummyRight = new THREE.Object3D();
-            xOffset = -30;
-            zOffset = -380;
-            wiperAmmoRight.mesh.position.x = xOffset;
-            wiperAmmoRight.mesh.position.z = zOffset;
-            dummyRight.position.x = -xOffset;
-            dummyRight.position.z = -zOffset;
-            dummyRight.add(wiperAmmoRight.mesh);
-            wiperAmmoRight.dummyMesh = dummyRight;
-            scene.add(dummyRight);
-
-            requestAnimFrame(main);
-        }
-    }
+    boxShape = new Ammo.btSphereShape(config.size);
+    boxShape.calculateLocalInertia( config.mass, localInertia );
     
-    render = function render() {
-        renderer.render(scene, camera);
-        // renderer.render(sceneCube, camera);
-    };
+    motionState = new Ammo.btDefaultMotionState( startTransform );
+    rbInfo = new Ammo.btRigidBodyConstructionInfo( config.mass, motionState, boxShape, localInertia );
+    rbInfo.m_restitution = config.rest;
+    pokeball = new Ammo.btRigidBody( rbInfo );
+    scene.world.addRigidBody( pokeball );
     
-    main = function main() {
-        updatePhysics();
-        controls.update();
-        render();
-        window.requestAnimFrame(main);
-    };
-    
-    window.onload = initScene;
-})();
+    // pokeball.mesh = self.mesh;
+    self.ammo = pokeball;
+    self.ammo.id = config.id;
+    self.ammo.wrapper = self;
+    return self;
+};
+PB.Ball.prototype = PB.AmmoThreeObject.prototype;
+PB.Pinball = function() {//There can only be one
+    var startX = 205, startZ = 330;
+    var ball = new PB.Ball({
+        mass: 100,
+        mapURL: "img/pokeball.png",
+        origX: -50,
+        origY: 0,
+        origZ: startZ - 200,
+        rotationX: 0,
+        rotationY: 0,
+        rotationZ: 0,
+        size: 13,
+        useQuat: true,
+        rest: 2
+    });
+    ball.ammo.setSleepingThresholds(0, 0);
+    return ball;
+};
+PB.Pinball.prototype = PB.AmmoThreeObject.prototype;
+PB.WiperData = {
+    xLimitRight : -30, 
+    xOrigRight : 15, 
+    zOrig : 345,
+    xLimitLeft : -50, 
+    xOrigLeft : -110
+};
+
+
+
+ 
+window.onload = PB.GlobalControl.initScene;

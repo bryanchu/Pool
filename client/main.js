@@ -2,6 +2,8 @@
 //TODO: finish refactoring everything
 //      color changing
 //      voltorb bouncing
+(navigator.userAgent.toLowerCase().indexOf('chrome') < 0) && alert("Please use Chrome for optimal WebGL.");
+
 window['requestAnimFrame'] = (function(){
   return  window.requestAnimationFrame       || 
           window.webkitRequestAnimationFrame || 
@@ -40,8 +42,6 @@ PB.GlobalControl = function() {
     self.BOUNCYOBJECTS = {};
     self.initScene = function() {
         PB.ScoreManager.scoreEl = document.getElementById('score');
-        //Check for Chrome bc firefox textures are bad
-        (navigator.userAgent.toLowerCase().indexOf('chrome') < 0) && alert("Please use Chrome for optimal WebGL.");
 
         PB.AudioManager.sounds.themeSound.addEventListener('ended', function() {
             this.currentTime = 0;
@@ -65,7 +65,7 @@ PB.GlobalControl = function() {
         overlappingPairCache = new Ammo.btDbvtBroadphase();
         solver = new Ammo.btSequentialImpulseConstraintSolver();
         self.scene.world = new Ammo.btDiscreteDynamicsWorld( dispatcher, overlappingPairCache, solver, collisionConfiguration );
-        self.scene.world.setGravity(new Ammo.btVector3(0, -42, 200));
+        self.scene.world.setGravity(new Ammo.btVector3(0, -42, 250));
 
         //flippers
         var wiperWidth = 70, wiperHeight = 70;
@@ -188,7 +188,9 @@ PB.GlobalControl = function() {
             rotationZ: -Math.PI / 3,
             size: 22,
             useQuat : false,
-            rest: false
+            rest: false,
+            id: "leftVoltorb",
+            isBouncy: true
         });
         new PB.Ball({
             mass: 0,
@@ -201,7 +203,9 @@ PB.GlobalControl = function() {
             rotationZ: -Math.PI / 3,
             size: 22,
             useQuat : false,
-            rest: false
+            rest: false,
+            id: "rightVoltorb",
+            isBouncy: true
         });
         new PB.Ball({
             mass: 0,
@@ -214,7 +218,9 @@ PB.GlobalControl = function() {
             rotationZ: -Math.PI / 3,
             size: 22,
             useQuat : false,
-            rest: false
+            rest: false,
+            id: "bottomVoltorb",
+            isBouncy: true
         });
         //Create diglet ammos.
         new PB.Ball({
@@ -400,6 +406,31 @@ PB.GlobalControl = function() {
                     rotationX: Math.PI / 2,
                     origX: 165,
                     origZ: 300});
+        //left fallout wall
+        new PB.Wall({height: 200,
+                    rotationX: -.6,
+                    origX: -190,
+                    origZ: 380});
+        //right fallout wall
+        new PB.Wall({height: 200,
+                    rotationX: .6,
+                    origX: 100,
+                    origZ: 380});
+        //top tiny wall for preventing stuck
+        new PB.Wall({height: 10,
+                    rotationX: 0,
+                    origX: -20,
+                    origZ: -295});
+        //left diglet escape prevention
+        new PB.Wall({height: 20,
+                    rotationX: Math.PI / 2,
+                    origX: -200,
+                    origZ: 115});
+        //right diglet escape prevention
+        new PB.Wall({height: 20,
+                    rotationX: Math.PI / 2,
+                    origX: 100,
+                    origZ: 115});
         // top red semicircle
         new PB.CurvedWall({
             reps: 25,
@@ -548,8 +579,7 @@ PB.GlobalControl = function() {
             var obB = contactManifold.getBody1();
             var obCollision = self.BOUNCYPOINTERS[obA] || self.BOUNCYPOINTERS[obB];
             if (obCollision) {
-                if (contactManifold.getContactPoint(0).getDistance() < .8) {
-                    console.log
+                if (contactManifold.getContactPoint(0).getDistance() < .3) {
                     obCollision.wrapper.createForce();
                 }
             }
@@ -717,6 +747,9 @@ PB.AudioManager = function() {
 PB.AmmoThreeObject = function(config) {
     this.config = config;
 };
+PB.AmmoThreeObject.prototype.addBouncy = function(object) {
+    PB.GlobalControl.BOUNCYPOINTERS[object.a] = object;
+}
 PB.AmmoThreeObject.prototype.assignValues = function() {
     this.mesh.receiveShadow = true;
     this.mesh.useQuaternion = false;
@@ -734,66 +767,53 @@ PB.AmmoThreeObject.prototype.remove = function() {
 PB.AmmoThreeObject.prototype.createForce = function() {
     var vector;
     var d = PB.WiperData;
+    var pokeball = PB.GlobalControl.pokeball;
+    var posX = pokeball.mesh.position.x,
+        posZ = pokeball.mesh.position.z;
+    var baseHit = 70000,
+        baseBounce = 30000;
     switch (this.ammo.id) {
         case "leftBumper":
             PB.AudioManager.play("bounceSound");
             PB.ScoreManager.add(150);
-            vector = new Ammo.btVector3(30000, 0, -30000);
+            posZ < 300 && (vector = new Ammo.btVector3(baseBounce, 0, -baseBounce));
             break;
         case "rightBumper":
             PB.AudioManager.play("bounceSound");
             PB.ScoreManager.add(150);
-            vector = new Ammo.btVector3(-30000, 0, -30000);
+            posZ < 300 && (vector = new Ammo.btVector3(-baseBounce, 0, -baseBounce));
             break;
         case "leftWiper":
-            var pokeball = PB.GlobalControl.pokeball;
-            var distX, distY, vector,
-                posX = pokeball.mesh.position.x,
-                posZ = pokeball.mesh.position.z;
-            if (PB.AmmoThreeObject.checkZone(true)) {
-                vector = new Ammo.btVector3((d.zOrig - posZ) * ((d.xOrigLeft - posX) / 40) * 1000, 0, -100000 * (((posZ - d.zOrig) / 30) + .6) * (((posX - d.xOrigLeft) / 40) + .8));
-                // pokeball.ammo.applyCentralImpulse(vector);
+            var distX, distY;
+            if (this.checkZone(true)) {
+                vector = new Ammo.btVector3((d.zOrig - posZ) * ((d.xOrigLeft - posX) / 40) * 1000, 0, -baseHit * (((posZ - d.zOrig) / 30) + .6) * (((posX - d.xOrigLeft) / 40) + .8));
                 PB.ScoreManager.add(200);
             }
             break;
         case "rightWiper":
-            var pokeball = PB.GlobalControl.pokeball;
-            var distX, distY, vector,
-                posX = pokeball.mesh.position.x,
-                posZ = pokeball.mesh.position.z;
-            if (PB.AmmoThreeObject.checkZone(false)) {
-                vector = new Ammo.btVector3((d.zOrig - posZ) * ((d.xOrigRight - posX) / 40) * 1000, 0, -100000 * (((posZ - d.zOrig) / 30) + .6) * (((d.xOrigRight - posX) / 40) + .8));
-                // pokeball.ammo.applyCentralImpulse(vector);
+            var distX, distY;
+            if (this.checkZone(false)) {
+                vector = new Ammo.btVector3((d.zOrig - posZ) * ((d.xOrigRight - posX) / 40) * 1000, 0, -baseHit * (((posZ - d.zOrig) / 30) + .6) * (((d.xOrigRight - posX) / 40) + .8));
                 PB.ScoreManager.add(200);
             }
+            break;
+        case "leftVoltorb":
+        case "rightVoltorb":
+        case "bottomVoltorb":
+            PB.AudioManager.play("bounceSound");
+            var diffZ = this.mesh.position.z - pokeball.mesh.position.z,
+                diffX = pokeball.mesh.position.x - this.mesh.position.x;
+            var angle = Math.atan(diffZ / diffX);
+            (diffX < 0) && (angle += Math.PI);
+            console.log(angle);
+            vector = new Ammo.btVector3(baseBounce * Math.cos(angle), 0, -baseBounce * Math.sin(angle));
+            PB.ScoreManager.add(250);
             break;
         default:
             console.log("Bad things.")
     }
     vector && PB.GlobalControl.pokeball.ammo.applyCentralImpulse(vector);
 };
-PB.AmmoThreeObject.checkZone = function(left) {//static
-    var posX = PB.GlobalControl.pokeball.mesh.position.x,
-        posZ = PB.GlobalControl.pokeball.mesh.position.z
-        leftFulcrumX = -110,
-        rightFulcrumX = 25;
-    var d = PB.WiperData;
-        
-    if (left && posX < d.xLimitLeft && posX > leftFulcrumX) {
-        if (posZ > d.zOrig) {
-            return posZ < d.zOrig + (posX - leftFulcrumX);
-        } else {
-            return posZ > d.zOrig - (posX - leftFulcrumX) * .8;
-        }
-        // return PB.GlobalControl.pokeball.mesh.position.x
-    } else if (posX < rightFulcrumX && posX > d.xLimitRight) {
-        if (posZ > d.zOrig) {
-            return posZ < d.zOrig + (rightFulcrumX - posX);
-        } else {
-            return posZ > d.zOrig - (rightFulcrumX - posX) * .8;
-        }
-    }
-}
 PB.Wall = function(config) {
     var self = new PB.AmmoThreeObject(config);
     var scene = PB.GlobalControl.scene;
@@ -832,9 +852,7 @@ PB.Wall = function(config) {
         var groundAmmo = new Ammo.btRigidBody( rbInfo );
         scene.world.addRigidBody( groundAmmo );
         //bounciness check
-        if (config.isBouncy) {
-            PB.GlobalControl.BOUNCYPOINTERS[groundAmmo.a] = groundAmmo;
-        }
+        config.isBouncy && self.addBouncy(groundAmmo);
         groundAmmo.id = config.id;
         self.ammo = groundAmmo;
         groundAmmo.wrapper = self;
@@ -842,6 +860,27 @@ PB.Wall = function(config) {
     return self;
 };
 PB.Wall.prototype = PB.AmmoThreeObject.prototype;
+PB.Wall.prototype.checkZone = function(left) {
+    var posX = PB.GlobalControl.pokeball.mesh.position.x,
+        posZ = PB.GlobalControl.pokeball.mesh.position.z
+        leftFulcrumX = -110,
+        rightFulcrumX = 25;
+    var d = PB.WiperData;
+        
+    if (left && posX < d.xLimitLeft && posX > leftFulcrumX) {
+        if (posZ > d.zOrig) {
+            return posZ < d.zOrig + (posX - leftFulcrumX);
+        } else {
+            return posZ > d.zOrig - (posX - leftFulcrumX) * .2;
+        }
+    } else if (posX < rightFulcrumX && posX > d.xLimitRight) {
+        if (posZ > d.zOrig) {
+            return posZ < d.zOrig + (rightFulcrumX - posX);
+        } else {
+            return posZ > d.zOrig - (rightFulcrumX - posX) * .2;
+        }
+    }
+}
 PB.Wall.testColor = null;
 PB.CurvedWall = function(config) {
     var rotAngle;
@@ -860,6 +899,7 @@ PB.Ball = function(config) {
         startTransform, localInertia, boxShape, motionState, rbInfo;
 
     var self = new PB.AmmoThreeObject(config);
+    self.radius = config.size;
     // Create 3D ball model
     if (config.mapURL) {
         self.mesh = new THREE.Mesh(
@@ -887,8 +927,8 @@ PB.Ball = function(config) {
     rbInfo.m_restitution = config.rest;
     pokeball = new Ammo.btRigidBody( rbInfo );
     scene.world.addRigidBody( pokeball );
-    
-    // pokeball.mesh = self.mesh;
+    config.isBouncy && self.addBouncy(pokeball);
+    pokeball.mesh = self.mesh;
     self.ammo = pokeball;
     self.ammo.id = config.id;
     self.ammo.wrapper = self;
@@ -915,7 +955,7 @@ PB.Pinball = function() {//There can only be one
 };
 PB.Pinball.prototype = PB.AmmoThreeObject.prototype;
 PB.WiperData = {
-    xLimitRight : -30, 
+    xLimitRight : -35, 
     xOrigRight : 15, 
     zOrig : 345,
     xLimitLeft : -50, 

@@ -431,6 +431,15 @@ PB.GlobalControl = function() {
                     rotationX: Math.PI / 2,
                     origX: 100,
                     origZ: 115});
+        //inner bellsprout right wall
+        new PB.CurvedWall({
+            reps: 8,
+            startAngle: -1.2,
+            endAngle: -2.3,
+            centerX: -100,
+            centerZ: -100,
+            radius: 200
+        });
         // top red semicircle
         new PB.CurvedWall({
             reps: 25,

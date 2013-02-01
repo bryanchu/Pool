@@ -661,6 +661,9 @@ PB.GlobalControl = function() {
             wiperRight.dummyMesh = dummyRight;
             PB.GlobalControl.scene.add(dummyRight);
 
+            document.getElementById('loadScreen').style.visibility = 'hidden';
+            document.getElementById('score').style.visibility = 'visible';
+
             requestAnimFrame(main);
         }
     };

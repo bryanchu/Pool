@@ -10,14 +10,7 @@
 	font-family: Helvetica;
 	font-weight: bold;
 }
-#loadScreen
-{
-	width: 100%;
-	height: 100%;
-	position: fixed;
-	z-index: 2;
-	background: url(img/loading.png);
-}
+#loadScreen,
 #score
 {
 	width: 500px;
@@ -28,4 +21,12 @@
 	color: #00B1C4;
 	position: fixed;
 	bottom: 0px;
+}
+#score
+{
+	visibility: hidden;
+}
+#loadScreen
+{
+	right: 0px;
 }

@@ -431,11 +431,21 @@ PB.GlobalControl = function() {
                     rotationX: Math.PI / 2,
                     origX: 100,
                     origZ: 115});
+        //left bottom bumper wall
+        new PB.Wall({height: 40,
+                    rotationX: -.7,
+                    origX: -150,
+                    origZ: 290});
+        //right bottom bumper wall
+        new PB.Wall({height: 40,
+                    rotationX: .7,
+                    origX: 70,
+                    origZ: 290});
         //inner bellsprout right wall
         new PB.CurvedWall({
             reps: 8,
-            startAngle: -1.2,
-            endAngle: -2.3,
+            startAngle: -2.3,
+            endAngle: -.8,
             centerX: -100,
             centerZ: -100,
             radius: 200
@@ -593,7 +603,7 @@ PB.GlobalControl = function() {
                 }
             }
         }
-        // console.log("-----------");
+
         if (leftForce) {
             wiperLeft.createForce();
             leftForce = false;

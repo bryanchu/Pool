@@ -837,7 +837,7 @@ PB.AmmoThreeObject.prototype.createForce = function() {
     vector && PB.GlobalControl.pokeball.ammo.applyCentralImpulse(vector);
 };
 PB.Wall = function(config) {
-    var self = new PB.AmmoThreeObject(config);
+    PB.AmmoThreeObject.call(this, config);
     var scene = PB.GlobalControl.scene;
     //defaults (explicitly check undefined b/c !0 == true and null == undefined (not necessary for all but might as well be consistent))
     (config.rotationY === undefined) && (config.rotationY = Math.PI / 2);
@@ -848,13 +848,13 @@ PB.Wall = function(config) {
     (config.img === undefined) && (config.img = PB.Wall.testColor);
     //mesh
     if (config.img) {
-        self.mesh = new THREE.Mesh(
+        this.mesh = new THREE.Mesh(
             new THREE.CubeGeometry( config.height, config.width, config.depth ),
             typeof config.img == "number" ? new THREE.MeshBasicMaterial({ color: config.img }) : new THREE.MeshPhongMaterial({ color: 0xffffff, specular: 0x888888,  map: config.img })
         );
-        self.assignValues();
-        self.mesh.useQuaternion = false;
-        PB.GlobalControl.scene.add( self.mesh );
+        this.assignValues();
+        this.mesh.useQuaternion = false;
+        PB.GlobalControl.scene.add( this.mesh );
     }
     //physics
     if (!config.meshOnly) {
@@ -874,14 +874,13 @@ PB.Wall = function(config) {
         var groundAmmo = new Ammo.btRigidBody( rbInfo );
         scene.world.addRigidBody( groundAmmo );
         //bounciness check
-        config.isBouncy && self.addBouncy(groundAmmo);
+        config.isBouncy && this.addBouncy(groundAmmo);
         groundAmmo.id = config.id;
-        self.ammo = groundAmmo;
-        groundAmmo.wrapper = self;
+        this.ammo = groundAmmo;
+        groundAmmo.wrapper = this;
     }
-    return self;
 };
-PB.Wall.prototype = PB.AmmoThreeObject.prototype;
+PB.Wall.prototype = new PB.AmmoThreeObject();
 PB.Wall.prototype.checkZone = function(left) {
     var posX = PB.GlobalControl.pokeball.mesh.position.x,
         posZ = PB.GlobalControl.pokeball.mesh.position.z
@@ -920,18 +919,18 @@ PB.Ball = function(config) {
     var ball, position_x, position_z, pokeball, scene = PB.GlobalControl.scene,
         startTransform, localInertia, boxShape, motionState, rbInfo;
 
-    var self = new PB.AmmoThreeObject(config);
-    self.radius = config.size;
+    PB.AmmoThreeObject.call(this, config);
+    this.radius = config.size;
     // Create 3D ball model
     if (config.mapURL) {
-        self.mesh = new THREE.Mesh(
+        this.mesh = new THREE.Mesh(
             new THREE.SphereGeometry( config.size, config.size, config.size),
             new THREE.MeshPhongMaterial({ color: 0xffffff, specular: 0x888888, map: THREE.ImageUtils.loadTexture(config.mapURL) })
         );
 
-        self.assignValues();
-        self.mesh.useQuaternion = config.useQuat;
-        PB.GlobalControl.scene.add( self.mesh );
+        this.assignValues();
+        this.mesh.useQuaternion = config.useQuat;
+        PB.GlobalControl.scene.add( this.mesh );
     }
             
     // Create ball physics model
@@ -949,17 +948,16 @@ PB.Ball = function(config) {
     rbInfo.m_restitution = config.rest;
     pokeball = new Ammo.btRigidBody( rbInfo );
     scene.world.addRigidBody( pokeball );
-    config.isBouncy && self.addBouncy(pokeball);
-    pokeball.mesh = self.mesh;
-    self.ammo = pokeball;
-    self.ammo.id = config.id;
-    self.ammo.wrapper = self;
-    return self;
+    config.isBouncy && this.addBouncy(pokeball);
+    pokeball.mesh = this.mesh;
+    this.ammo = pokeball;
+    this.ammo.id = config.id;
+    this.ammo.wrapper = this;
 };
-PB.Ball.prototype = PB.AmmoThreeObject.prototype;
+PB.Ball.prototype = new PB.AmmoThreeObject();
 PB.Pinball = function() {//There can only be one
     var startX = 205, startZ = 330;
-    var ball = new PB.Ball({
+    PB.Ball.call(this, {
         mass: 100,
         mapURL: "img/pokeball.png",
         origX: startX,
@@ -972,10 +970,9 @@ PB.Pinball = function() {//There can only be one
         useQuat: true,
         rest: 2
     });
-    ball.ammo.setSleepingThresholds(0, 0);
-    return ball;
+    this.ammo.setSleepingThresholds(0, 0);
 };
-PB.Pinball.prototype = PB.AmmoThreeObject.prototype;
+PB.Pinball.prototype = new PB.AmmoThreeObject();
 PB.WiperData = {
     xLimitRight : -35, 
     xOrigRight : 15, 
@@ -984,7 +981,4 @@ PB.WiperData = {
     xOrigLeft : -110
 };
 
-
-
- 
 window.onload = PB.GlobalControl.initScene;

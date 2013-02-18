@@ -894,7 +894,7 @@ PB.Wall.prototype.checkZone = function(left) {
         } else {
             return posZ > d.zOrig - (posX - leftFulcrumX) * .2;
         }
-    } else if (posX < rightFulcrumX && posX > d.xLimitRight) {
+    } else if (!left && posX < rightFulcrumX && posX > d.xLimitRight) {
         if (posZ > d.zOrig) {
             return posZ < d.zOrig + (rightFulcrumX - posX);
         } else {

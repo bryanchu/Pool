@@ -50,7 +50,11 @@ PB.GlobalControl = function() {
         PB.AudioManager.play("themeSound");
         
         // Renderer
-        renderer = new THREE.WebGLRenderer({antialias: true});
+        try {
+            renderer = new THREE.WebGLRenderer({antialias: true});
+        } catch(err) {
+            alert("WebGL Error: Either your graphics card is too old, or it is integrated. But you may be able to play this by downloading Chrome Canary.");
+        }
         renderer.shadowMapEnabled = true;
         renderer.shadowMapSoft = true;
         renderer.setSize( window.innerWidth, window.innerHeight );

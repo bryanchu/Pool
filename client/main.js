@@ -896,7 +896,6 @@ PB.Wall = function(config) {
         groundAmmo.wrapper = this;
     }
 };
-// PB.Wall.prototype = new PB.AmmoThreeObject();
 extend(PB.Wall, PB.AmmoThreeObject);
 PB.Wall.prototype.checkZone = function(left) {
     var posX = PB.GlobalControl.pokeball.mesh.position.x,
@@ -971,7 +970,6 @@ PB.Ball = function(config) {
     this.ammo.id = config.id;
     this.ammo.wrapper = this;
 };
-// PB.Ball.prototype = new PB.AmmoThreeObject();
 extend(PB.Ball, PB.AmmoThreeObject);
 PB.Pinball = function() {//There can only be one
     var startX = 205, startZ = 330;
@@ -990,7 +988,6 @@ PB.Pinball = function() {//There can only be one
     });
     this.ammo.setSleepingThresholds(0, 0);
 };
-// PB.Pinball.prototype = new PB.AmmoThreeObject();
 extend(PB.Pinball, PB.AmmoThreeObject);
 PB.WiperData = {
     xLimitRight : -35, 

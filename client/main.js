@@ -15,6 +15,18 @@ window['requestAnimFrame'] = (function(){
           };
 })();
 
+function extend(subClass, superClass) {
+    var F = function() {};
+    F.prototype = superClass.prototype;
+    subClass.prototype = new F();
+    subClass.prototype.constructor = subClass;
+
+    subClass.superclass = superClass.prototype;
+    if(superClass.prototype.constructor == Object.prototype.constructor) {
+        superClass.prototype.constructor = superClass;
+    }
+};
+
 var Module = { TOTAL_MEMORY: 100*1024*1024 };
 PB = {};
 //SINGLETONS
@@ -884,7 +896,8 @@ PB.Wall = function(config) {
         groundAmmo.wrapper = this;
     }
 };
-PB.Wall.prototype = new PB.AmmoThreeObject();
+// PB.Wall.prototype = new PB.AmmoThreeObject();
+extend(PB.Wall, PB.AmmoThreeObject);
 PB.Wall.prototype.checkZone = function(left) {
     var posX = PB.GlobalControl.pokeball.mesh.position.x,
         posZ = PB.GlobalControl.pokeball.mesh.position.z
@@ -958,7 +971,8 @@ PB.Ball = function(config) {
     this.ammo.id = config.id;
     this.ammo.wrapper = this;
 };
-PB.Ball.prototype = new PB.AmmoThreeObject();
+// PB.Ball.prototype = new PB.AmmoThreeObject();
+extend(PB.Ball, PB.AmmoThreeObject);
 PB.Pinball = function() {//There can only be one
     var startX = 205, startZ = 330;
     PB.Ball.call(this, {
@@ -976,7 +990,8 @@ PB.Pinball = function() {//There can only be one
     });
     this.ammo.setSleepingThresholds(0, 0);
 };
-PB.Pinball.prototype = new PB.AmmoThreeObject();
+// PB.Pinball.prototype = new PB.AmmoThreeObject();
+extend(PB.Pinball, PB.AmmoThreeObject);
 PB.WiperData = {
     xLimitRight : -35, 
     xOrigRight : 15, 
